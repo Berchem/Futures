@@ -129,7 +129,8 @@ class Table:
 
                 for aggregate_name, aggregate_fn in aggregates.iteritems():
                     new_row += [aggregate_fn(rows)]
-                    result_table.insert(new_row)
+                
+                result_table.insert(new_row)
 
         return result_table
 
