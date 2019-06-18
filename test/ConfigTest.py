@@ -3,7 +3,7 @@ import unittest
 
 
 class ConfigTest(unittest.TestCase):
-    conf = Config('./conf/conf.properties')
+    conf = Config('../test_resources/conf/conf.properties')
 
     def test_Config(self):
         self.assertIsNotNone(self.conf.prop)
