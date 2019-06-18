@@ -1,26 +1,39 @@
 from Futures.Config import Config
+import unittest
 
-my_conf = Config('../conf/conf.properties')
-print my_conf.conf.get('DEFAULT', 'SRC_FOLDER')
-print my_conf.conf.get('CUSTOM', 'URL')
-my_conf.set_property_to_local('aaa', 'bbb', 'ccc')
-print my_conf.conf.get('aaa', 'bbb')
 
-my_conf.is_exist('aaa', 'bbb')
-# my_conf.is_exist('aaa', 'bbc')
-# my_conf.is_exist('abc', 'bbb')
-# my_conf.is_exist('abc', 'bbc')
-my_conf.set_default('1', '2')
-print my_conf.conf.get('CUSTOM', '1')
-print my_conf.conf.get('aaa', '1')
+class ConfigTest(unittest.TestCase):
+    conf = Config('./conf/conf.properties')
 
-print 'bbb: ', my_conf.conf.get('aaa', 'bbb')
-my_conf.set_default('bbb', 'c')
-print 'bbb: ', my_conf.conf.get('aaa', 'bbb')
+    def test_Config(self):
+        self.assertIsNotNone(self.conf.prop)
 
-print 'ANY_PROPERTY: ', my_conf.conf.get('CUSTOM', 'ANY_PROPERTY')
-my_conf.set_default('ANY_PROPERTY', 'YEE')
-# print 'ANY_PROPERTY: ', my_conf.conf.get('DEFAULT', 'ANY_PROPERTY')
+    def test_set_property_to_local(self):
+        self.conf.set_property_to_local('aaa', 'bbb', 'ccc')
+        self.assertEqual('ccc', self.conf.prop.get('aaa', 'bbb'))
 
-my_conf.is_int('aaa', '1')
-my_conf.is_int('CUSTOM', 'ANY_PROPERTY')
+    def test_set_default(self):
+        section = 'CUSTOM'
+        # the field was not in any section, set to [DEFAULT]
+        self.conf.set_default('berchem', 'lin')
+        self.assertIn('berchem', self.conf.prop.options(section))
+        self.assertEqual('lin', self.conf.prop.get('DEFAULT', 'berchem'))
+        # the field was in a section, but field is null
+        self.conf.set_default('ANY_PROPERTY', 'YEE')
+        self.assertEqual('YEE', self.conf.prop.get(section, 'ANY_PROPERTY'))
+        # the field and value was exist, do nothing
+        self.conf.set_default('SRC_FOLDER', 'D:\\')
+        self.assertNotEqual('D:\\', self.conf.prop.get(section, 'SRC_FOLDER'))
+
+    def test_is_exist(self):
+        self.assertIsNone(self.conf.is_exist('CUSTOM', 'URL'))
+        self.assertRaises(Exception, self.conf.is_exist)
+
+    def test_is_int(self):
+        self.conf.set_property_to_local('aaa', 'bbb', '123')
+        self.assertIsNone(self.conf.is_int('aaa', 'bbb'))
+        self.assertRaises(self.conf.is_int)
+
+
+if __name__ == '__main__':
+    unittest.main()
