@@ -1,14 +1,27 @@
 import sqlite3
 
 
-class SQLiteUtil:
+class SQLite:
+    __database = None
+    conn = None
+
     def __init__(self, database):
         self.__database = database
-        self.conn = self.__get_connection()
+        self.__get_connection()
 
     def __get_connection(self):
-        return sqlite3.connect(self.__database)
+        self.conn = sqlite3.connect(self.__database)
 
+
+class SQLiteImporter(SQLite):
+    def create_table(self, sqlite_table_name, sqlite_columns):
+        pass
+
+    def write_sqlite(self, path_str, table_name):
+        pass
+
+
+class SQLiteUtil(SQLite):
     def _get(self, table, **kwargs):
         query = "select * from %s" % table
 
