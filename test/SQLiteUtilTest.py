@@ -13,9 +13,14 @@ class SQLiteUtilTest(unittest.TestCase):
         self.sqlite_util.conn.executemany('insert into bc_test values (?, ?, ?)', [(1, "Hero", 0),
                                                                                    (3, "John", 3),
                                                                                    (2, "May", 5)])
+        self.sqlite_util.conn.commit()
         data = self.sqlite_util._get("bc_test")
         for row in data:
             print row
+
+    def test_drop_table(self):
+        self.sqlite_util.conn.execute("drop table if exists bc_test")
+        self.sqlite_util.conn.commit()
 
 
 if __name__ == '__main__':
