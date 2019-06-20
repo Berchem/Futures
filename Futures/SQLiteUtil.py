@@ -26,14 +26,16 @@ class SQLiteImporter(SQLite):
     def write_sqlite(self, path_str, table_name):
         insert_template = "insert into {table} values ({column})"
         if os.path.isdir(path_str):
-            pass
+            data = []
+            for filename in os.listdir(path_str):
+                data.extend(read_csv(os.path.join(path_str, filename)))
         else:
             filename = path_str
             data = read_csv(filename, with_header=True)
-            columns = ",".join("?" for _ in xrange(len(data[0])))
-            insert_query = insert_template.format(table=table_name, column=columns)
-            self.conn.executemany(insert_query, data)
-            self.conn.commit()
+        columns = ",".join("?" for _ in xrange(len(data[0])))
+        insert_query = insert_template.format(table=table_name, column=columns)
+        self.conn.executemany(insert_query, data)
+        self.conn.commit()
 
     def drop_table(self, table_name):
         self.conn.execute("drop table if exists %s" % table_name)
@@ -47,7 +49,7 @@ class SQLiteUtil(SQLiteImporter):
     def _get(self, table, **kwargs):
         query = "select * from %s" % table
 
-        if any(filter(lambda k: k in ("start", "drop_night_trade", "predicate"), kwargs)):
+        if any(filter(lambda k: k in ("start", "drop_night_trade"), kwargs)):
             query += " where"
             subquery = []
 
@@ -77,6 +79,3 @@ class SQLiteUtil(SQLiteImporter):
 
     def get_per_min(self, table='tick_min_log', **kwargs):
         return self._get(table, **kwargs)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.conn.close()
