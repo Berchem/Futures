@@ -1,5 +1,6 @@
 import warnings
 import functools
+import csv
 
 
 def deprecated(func):
@@ -15,3 +16,12 @@ def deprecated(func):
         warnings.simplefilter('default', DeprecationWarning)  # reset filter
         return func(*args, **kwargs)
     return new_func
+
+
+def read_csv(filename, with_header=True):
+    with open(filename) as f:
+        csv_reader = csv.reader(f)
+        if with_header:
+            next(csv_reader)
+        data = [row for row in csv_reader]
+    return data

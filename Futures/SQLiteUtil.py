@@ -1,4 +1,6 @@
+import os
 import sqlite3
+from Util import read_csv
 
 
 class SQLite:
@@ -15,13 +17,33 @@ class SQLite:
 
 class SQLiteImporter(SQLite):
     def create_table(self, sqlite_table_name, sqlite_columns):
-        pass
+        create_template = "create table if not exists {table} ({column})"
+        columns = ",".join("{} text".format(col) for col in sqlite_columns)
+        create_query = create_template.format(table=sqlite_table_name, column=columns)
+        self.conn.execute(create_query)
+        self.conn.commit()
 
     def write_sqlite(self, path_str, table_name):
-        pass
+        insert_template = "insert into {table} values ({column})"
+        if os.path.isdir(path_str):
+            pass
+        else:
+            filename = path_str
+            data = read_csv(filename, with_header=True)
+            columns = ",".join("?" for _ in xrange(len(data[0])))
+            insert_query = insert_template.format(table=table_name, column=columns)
+            self.conn.executemany(insert_query, data)
+            self.conn.commit()
+
+    def drop_table(self, table_name):
+        self.conn.execute("drop table if exists %s" % table_name)
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
 
 
-class SQLiteUtil(SQLite):
+class SQLiteUtil(SQLiteImporter):
     def _get(self, table, **kwargs):
         query = "select * from %s" % table
 
