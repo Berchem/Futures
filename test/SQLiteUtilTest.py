@@ -25,7 +25,7 @@ class SQLiteUtilTest(unittest.TestCase):
         # drop table
         self.sqlite_util.drop_table(self.table_name)
         # create table
-        self.sqlite_util.create_table(self.table_name, ["id", "name", "interests"])
+        self.sqlite_util.create_table(self.table_name, ["ind", "name", "interests"])
         # fetch table list
         cursor = self.sqlite_util.conn.execute("select name from sqlite_master where type='table'")
         table_list = [result[0] for result in cursor.fetchall()]
@@ -64,17 +64,23 @@ class SQLiteUtilTest(unittest.TestCase):
         # assert
         self.assertTrue(length == len(result))
 
-    def test_get(self):
-        cursor = self.sqlite_util.conn.execute("select * from %s" % self.table_name)
-        # result = cursor.fetchall()
-        # data = [dict(zip(self.columns, row)) for row in result]
-        # for i in xrange(5):
-        #     print data[i]
+    def test_get_columns(self):
+        # query a table not exists
+        columns = self.sqlite_util.get_columns("not_exists")
+        self.assertIsNone(columns)
+        # query a table
+        self.test_write_sqlite_csv()
+        columns = self.sqlite_util.get_columns(self.table_name)
+        self.assertListEqual(columns, self.columns)
 
-        result = self.sqlite_util._get(self.table_name)
-        data = [dict(zip(self.columns, row)) for row in result]
-        for row in data:
-            print row
+    def test_tables(self):
+        self.test_write_sqlite_csv()
+        self.assertIn(self.table_name, self.sqlite_util.tables())
+
+    def test_scan(self):
+        self.test_write_sqlite_csv()
+        data = self.sqlite_util.scan("select * from {}".format(self.table_name))
+        self.assertEqual(len(data), 45310)
 
 
 if __name__ == '__main__':

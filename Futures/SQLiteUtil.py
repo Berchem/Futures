@@ -14,8 +14,6 @@ class SQLite:
     def __get_connection(self):
         self.conn = sqlite3.connect(self.__database)
 
-
-class SQLiteImporter(SQLite):
     def create_table(self, sqlite_table_name, sqlite_columns):
         create_template = "create table if not exists {table} ({column})"
         columns = ",".join("{} text".format(col) for col in sqlite_columns)
@@ -44,38 +42,25 @@ class SQLiteImporter(SQLite):
     def close(self):
         self.conn.close()
 
+    def tables(self):
+        cursor = self.conn.execute("select name from sqlite_master where type='table'")
+        return [result[0] for result in cursor.fetchall()]
 
-class SQLiteUtil(SQLiteImporter):
-    def _get(self, table, **kwargs):
-        query = "select * from %s" % table
+    def get_columns(self, table_name):
+        cursor = self.conn.execute("select sql from sqlite_master where name='{}'".format(table_name))
+        result = cursor.fetchone()
+        if result is None:
+            return result
+        else:
+            result = result[0]
+            result = result.split(table_name)[1]
+            result = result.replace("(", "").replace(")", "").strip()
+            result_list = result.split(",")
+            columns = [col.split(" ")[0] for col in result_list]
+            return columns
 
-        if any(filter(lambda k: k in ("start", "drop_night_trade"), kwargs)):
-            query += " where"
-            subquery = []
 
-            if 'start' in kwargs.keys():
-                start = kwargs['start']
-                subquery += ["(Date>='%s')" % start]
-
-            if "drop_night_trade" in kwargs.keys():
-                if kwargs["drop_night_trade"]:
-                    subquery += ["(Time>='08:45:00') & (Time<='13:45:00')"]
-
-            query += " " + " & ".join(subquery)
-
-        if "predicate" in kwargs.keys():
-            predicate = kwargs["predicate"]
-            query += " " + predicate
-
-        if "lim" in kwargs.keys():
-            lim = kwargs['lim']
-            query += " limit %d" % lim
-
+class SQLiteUtil(SQLite):
+    def scan(self, query):
         cursor = self.conn.execute(query)
         return cursor.fetchall()
-
-    def get_each(self, table='tick_log', **kwargs):
-        return self._get(table, **kwargs)
-
-    def get_per_min(self, table='tick_min_log', **kwargs):
-        return self._get(table, **kwargs)
