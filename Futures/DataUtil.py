@@ -5,7 +5,7 @@ from MypseudoSQL import Table
 
 class DataUtil:
     __table = None
-    __sqlit_util = None
+    __sqlite_util = None
 
     def __init__(self):
         pass
@@ -25,9 +25,9 @@ class DataUtil:
         return self.__table
 
     def get_data_from_sqlite(self, database, table_name):
-        self.__sqlit_util = SQLiteUtil(database)
-        columns = self.__sqlit_util.get_columns(table_name)
-        raw_data = self.__sqlit_util.scan("select * from %s" % table_name)
+        self.__sqlite_util = SQLiteUtil(database)
+        columns = self.__sqlite_util.get_columns(table_name)
+        raw_data = self.__sqlite_util.scan("select * from %s" % table_name)
         self.__table = Table(columns)
         for row in raw_data:
             self.__table.insert(row)
