@@ -33,7 +33,7 @@ class SQLiteUtilTest(unittest.TestCase):
         self.assertTrue(self.table_name in table_list)
 
     def test_write_sqlite_csv(self):
-        filename = "../TradeBookDownload/BooksSample/TickData/Futures_20170815_I020.csv"
+        filename = "../futures_data_samole/MATCH/Futures_20170815_I020.csv"
         # drop table
         self.sqlite_util.drop_table(self.table_name)
         # create table and write a file
@@ -48,7 +48,7 @@ class SQLiteUtilTest(unittest.TestCase):
         self.assertTrue(len(data) == len(result))
 
     def test_write_sqlite_folder(self):
-        path_name = "../test_resources/futures_data_sample"
+        path_name = "../test_resources/futures_data_sample/MATCH"
         # drop table
         self.sqlite_util.drop_table(self.table_name)
         # create table and write a file
