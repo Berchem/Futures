@@ -13,7 +13,7 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual('ccc', self.conf.prop.get('aaa', 'bbb'))
 
     def test_set_default(self):
-        section = 'CUSTOM'
+        section = 'SQLITE'
         # the field was not in any section, set to [DEFAULT]
         self.conf.set_default('berchem', 'lin')
         self.assertIn('berchem', self.conf.prop.options(section))
