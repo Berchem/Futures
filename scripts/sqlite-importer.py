@@ -1,6 +1,6 @@
 from Futures.DataUtil import DataUtil
 from Futures.SQLiteUtil import SQLiteUtil
-import os, sys
+import os
 
 
 src_path = "../test_resources/futures_data_sample"
