@@ -25,3 +25,37 @@ def read_csv(filename, with_header=True):
             next(csv_reader)
         data = [row for row in csv_reader]
     return data
+
+
+def time_to_num(time):
+    '''
+    :param time: string, format: HHMMSSss
+    :return: num: int
+    '''
+    time = time.zfill(8)
+    time_list = [int(time[i:i+2]) for i in xrange(0, 8, 2)]
+    unit_list = ["HH", "MM", "SS", "ss"]
+    hash_map = dict(zip(unit_list, time_list))
+    hash_map["HH"] *= 360000
+    hash_map["MM"] *= 6000
+    hash_map["SS"] *= 100
+    return sum(val for val in hash_map.values())  # num
+
+
+def num_to_time(num):
+    '''
+    :param num: int
+    :return time: string, format: HHMMSSss
+    '''
+    ss = "%02d" % (num % 100)
+    time = num // 100
+    SS = "%02d" % (time % 60)
+    time //= 60
+    MM = "%02d" % (time % 60)
+    time //= 60
+    HH = "%02d" % (time % 60)
+    return HH + MM + SS + ss
+
+
+
+
