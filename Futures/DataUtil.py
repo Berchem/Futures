@@ -4,11 +4,9 @@ from MypseudoSQL import Table
 
 
 class DataUtil:
-    __table = None
-    __sqlite_util = None
-
     def __init__(self):
-        pass
+        self.__table = None
+        self.__sqlite_util = None
 
     def get_data_from_file(self, filename, with_header):
         if with_header:  # True, file is with headers
