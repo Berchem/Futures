@@ -57,5 +57,52 @@ def num_to_time(num):
     return HH + MM + SS + ss
 
 
+class MovingAverage:
+    def __init__(self, interval, period, initial_time=None):
+        """
+        :param interval    : <int>, sequence of n values, e.g., 10
+        :param period      : <int>, period for updating sequence, e.g., 6000 for 1 minute
+        :param initial_time: <str>, start time, e.g., "08450000"
+        """
+        self.interval = interval
+        self.period = period
+        self.timestamp = initial_time if initial_time is None else time_to_num(initial_time)
+        self.ma_value = None
+        self.ma_array = []
+        self.time_array = []
 
+    def update(self, time, price):
+        if len(self.ma_array) == 0:
+            self.ma_array.append(price)
+            self.time_array.append(time)
 
+            if self.timestamp is None:
+                self.timestamp = time_to_num(time)
+
+        else:
+            if time_to_num(time) < self.timestamp + self.period:
+                self.ma_array[-1] = price
+                self.time_array[-1] = time
+
+            else:
+                self.timestamp += self.period
+
+                if len(self.ma_array) == self.interval:
+                    self.ma_array = self.ma_array[1:] + [price]
+                    self.time_array = self.time_array[1:] + [time]
+
+                else:
+                    self.ma_array.append(price)
+                    self.time_array.append(time)
+
+        self.ma_value = float(sum(self.ma_array)) / len(self.ma_array)
+
+    def get(self, field=None):
+        if field == "ma":
+            return self.ma_value
+
+        elif field == "time":
+            return self.time_array[-1]
+
+        else:
+            return self.time_array[-1], self.ma_value

@@ -1,11 +1,13 @@
 from Futures.SQLiteUtil import SQLiteUtil
 from Futures.Util import read_csv
+from Futures.Config import Config
 import os
 import unittest
 
 
 class SQLiteUtilTest(unittest.TestCase):
-    sqlite_util = SQLiteUtil('../test_resources/db.sqlite3')
+    conf = Config('../test_resources/conf/conf.properties')
+    sqlite_util = SQLiteUtil(conf.prop.get("SQLITE", "DATABASE"))
     table_name = "test_table"
     columns = ['INFO_TIME', 'MATCH_TIME', 'PROD', 'ITEM', 'PRICE', 'QTY', 'AMOUNT', 'MATCH_BUY_CNT', 'MATCH_SELL_CNT']
 
