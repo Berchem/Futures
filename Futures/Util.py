@@ -64,45 +64,56 @@ class MovingAverage:
         :param period      : <int>, period for updating sequence, e.g., 6000 for 1 minute
         :param initial_time: <str>, start time, e.g., "08450000"
         """
-        self.interval = interval
-        self.period = period
-        self.timestamp = initial_time if initial_time is None else time_to_num(initial_time)
-        self.ma_value = None
-        self.ma_array = []
-        self.time_array = []
+        self.__interval = interval
+        self.__period = period
+        self.__timestamp = initial_time if initial_time is None else time_to_num(initial_time)
+        self.__ma_value = None
+        self.__ma_array = []
+        self.__time_array = []
 
     def update(self, time, price):
-        if len(self.ma_array) == 0:
-            self.ma_array.append(price)
-            self.time_array.append(time)
+        """
+        :param time: <str> info_time
+        :param price: <int> or <float> price
+        :return: void
+        """
+        if len(self.__ma_array) == 0:
+            self.__ma_array.append(price)
+            self.__time_array.append(time)
 
-            if self.timestamp is None:
-                self.timestamp = time_to_num(time)
+            if self.__timestamp is None:
+                self.__timestamp = time_to_num(time)
 
         else:
-            if time_to_num(time) < self.timestamp + self.period:
-                self.ma_array[-1] = price
-                self.time_array[-1] = time
+            if time_to_num(time) < self.__timestamp + self.__period:
+                self.__ma_array[-1] = price
+                self.__time_array[-1] = time
 
             else:
-                self.timestamp += self.period
+                self.__timestamp += self.__period
 
-                if len(self.ma_array) == self.interval:
-                    self.ma_array = self.ma_array[1:] + [price]
-                    self.time_array = self.time_array[1:] + [time]
+                if len(self.__ma_array) == self.__interval:
+                    self.__ma_array = self.__ma_array[1:] + [price]
+                    self.__time_array = self.__time_array[1:] + [time]
 
                 else:
-                    self.ma_array.append(price)
-                    self.time_array.append(time)
+                    self.__ma_array.append(price)
+                    self.__time_array.append(time)
 
-        self.ma_value = float(sum(self.ma_array)) / len(self.ma_array)
+        self.__ma_value = float(sum(self.__ma_array)) / len(self.__ma_array)
 
     def get(self, field=None):
+        """
+        :param field: <option>, None, "ma", "time"
+        :return:   None for (str time, float ma_value)
+                   "ma" for float ma_value
+                 "time" for str time
+        """
         if field == "ma":
-            return self.ma_value
+            return self.__ma_value
 
         elif field == "time":
-            return self.time_array[-1]
+            return self.__time_array[-1]
 
         else:
-            return self.time_array[-1], self.ma_value
+            return self.__time_array[-1], self.__ma_value
