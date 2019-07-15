@@ -4,10 +4,8 @@ from Util import read_csv
 
 
 class SQLite:
-    __database = None
-    conn = None
-
     def __init__(self, database):
+        self.conn = None
         self.__database = database
         self.__get_connection()
 
