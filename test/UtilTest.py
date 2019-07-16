@@ -28,7 +28,7 @@ class UtilTest(unittest.TestCase):
         MA = []
         STime = time_to_num('08450000')
         Cycle = 6000
-        MAlen = 10
+        MAlen = 5
 
         for i in I020:
             time = i[0]
@@ -49,11 +49,11 @@ class UtilTest(unittest.TestCase):
         return MA
 
     def test_MovingAverage(self):
+        filename = os.path.join(self.test_resource_path, 'MATCH', 'Futures_20170815_I020.csv')
         # actual
-        filename = os.path.join(self.test_resource_path,'MATCH', 'Futures_20170815_I020.csv')
         ma_list_example = self.ma_example(filename)
         # expect
-        ma_obj = MovingAverage(10, 6000, "8450000")
+        ma_obj = MovingAverage(5, 6000, "8450000")
         data = self.data_util.get_data_from_file(filename, True)
         ma_list = []
         for row in data.rows:
@@ -61,6 +61,108 @@ class UtilTest(unittest.TestCase):
             ma_list.extend([ma_obj.get()])
         # assertion
         self.assertEqual(ma_list, ma_list_example)
+        self.assertRaises(Exception, ma_obj.update, "123", 456)
+
+    @staticmethod
+    def high_low_price(filename):
+        I020 = [line.strip('\n').split(",") for line in open(filename)][1:]
+        high = int(I020[0][4])
+        low = int(I020[0][4])
+        high_low_list = [(I020[0][0], high, low)]
+        for i in I020[1:]:
+            price = int(i[4])
+            if price > high:
+                high = price
+            if price < low:
+                low = price
+            high_low_list.extend([(i[0], high, low)])
+        return high_low_list
+
+    def test_high_low_price(self):
+        filename = os.path.join(self.test_resource_path, 'MATCH', 'Futures_20170815_I020.csv')
+        # actual
+        high_low_list_example = self.high_low_price(filename)
+        # expect
+        data = self.data_util.get_data_from_file(filename, True)
+        high_low_obj = HighLowPrice()
+        high_low_list = []
+        for row in data.rows:
+            high_low_obj.update(row["INFO_TIME"], int(row["PRICE"]))
+            high_low_list.extend([high_low_obj.get()])
+        # assert
+        self.assertEqual(high_low_list, high_low_list_example)
+        self.assertRaises(Exception, high_low_obj.update, data.rows[0]["INFO_TIME"], 1)
+
+    @staticmethod
+    def sell_buy_volume(filename):
+        I020 = [line.strip('\n').split(",") for line in open(filename)][1:]
+        lastPrice = int(I020[0][4])
+        outDesk = 0
+        inDesk = 0
+        sell_buy_list = [(I020[0][0], lastPrice, inDesk, outDesk)]
+        for i in I020[1:]:
+            price = int(i[4])
+            qty = int(i[5])
+            if price > lastPrice:
+                outDesk += qty
+            if price < lastPrice:
+                inDesk += qty
+            lastPrice = price
+            sell_buy_list.extend([(i[0], price, inDesk, outDesk)])
+        return sell_buy_list
+
+    def test_sell_buy_volume(self):
+        filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
+        # actual
+        sell_buy_list_example = self.sell_buy_volume(filename)
+        # expect
+        data = self.data_util.get_data_from_file(filename, 1)
+        sell_buy_obj = SellBuyVolume()
+        sell_buy_list = []
+        for row in data.rows:
+            sell_buy_obj.update(row["INFO_TIME"], int(row["PRICE"]), int(row["QTY"]))
+            sell_buy_list += [sell_buy_obj.get()]
+        # assert
+        self.assertEqual(sell_buy_list, sell_buy_list_example)
+        self.assertRaises(Exception, sell_buy_obj.update, data.rows[0]["INFO_TIME"], 1, 1)
+
+    def test_mix_index(self):
+        filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
+        data = self.data_util.get_data_from_file(filename, 1)
+        ma_obj = MovingAverage(10, 6000, "8450000")
+        high_low_obj = HighLowPrice()
+        sell_buy_obj = SellBuyVolume()
+
+        time_list = []
+        current_price_list = []
+        ma_10_list = []
+        high_price_list = []
+        low_price_list = []
+        sell_list = []
+        buy_list = []
+
+        for row in data.rows:
+            time = row["INFO_TIME"]
+            price = int(row["PRICE"])
+            volume = int(row["QTY"])
+
+            ma_obj.update(time, price)
+            high_low_obj.update(time, price)
+            sell_buy_obj.update(time, price, volume)
+
+            _, ma_value = ma_obj.get()
+            _, high, low = high_low_obj.get()
+            _, current_price, sell, buy = sell_buy_obj.get()
+
+            time_list += [time]
+            current_price_list += [current_price]
+            high_price_list += [high]
+            low_price_list += [low]
+            sell_list += [sell]
+            buy_list += [buy]
+
+        # graph
+
 
 
 if __name__ == '__main__':
