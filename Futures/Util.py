@@ -86,7 +86,12 @@ class MovingAverage:
                 self.__timestamp = time_to_num(time)
 
         else:
-            if time_to_num(time) < self.__timestamp + self.__period:
+            timestamp = time_to_num(time)
+
+            if timestamp < time_to_num(self.__time_array[-1]):
+                raise Exception("timestamp is out of order")
+
+            if timestamp < self.__timestamp + self.__period:
                 self.__ma_array[-1] = price
                 self.__time_array[-1] = time
 
