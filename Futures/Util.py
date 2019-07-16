@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import warnings
 import functools
 import csv
@@ -58,7 +59,7 @@ def num_to_time(num):
 
 
 class MovingAverage:
-    def __init__(self, interval, period, initial_time=None):
+    def __init__(self, interval, period, initial_time):
         """
         :param interval    : <int>, sequence of n values, e.g., 10
         :param period      : <int>, period for updating sequence, e.g., 6000 for 1 minute
@@ -66,7 +67,7 @@ class MovingAverage:
         """
         self.__interval = interval
         self.__period = period
-        self.__timestamp = initial_time if initial_time is None else time_to_num(initial_time)
+        self.__timestamp = time_to_num(initial_time)
         self.__ma_value = None
         self.__ma_array = []
         self.__time_array = []
@@ -102,18 +103,106 @@ class MovingAverage:
 
         self.__ma_value = float(sum(self.__ma_array)) / len(self.__ma_array)
 
-    def get(self, field=None):
+    def get(self):
         """
-        :param field: <option>, None, "ma", "time"
-        :return:   None for (str time, float ma_value)
-                   "ma" for float ma_value
-                 "time" for str time
+        :return: (str raw_time, float ma_value)
         """
-        if field == "ma":
-            return self.__ma_value
+        return self.__time_array[-1], self.__ma_value
 
-        elif field == "time":
-            return self.__time_array[-1]
+
+class HighLowPrice:
+    def __init__(self, high=None, low=None, initial_time=None):
+        """
+        :param high        : <int>
+        :param low         : <int>
+        :param initial_time: <str>, start time, e.g., "08450000"
+        """
+        self.__high = high
+        self.__low = low
+        self.__time = initial_time
+        self.__timestamp = initial_time if initial_time is None else time_to_num(initial_time)
+
+    def update(self, time, price):
+        """
+        :param time: <str> info_time
+        :param price: <int> or <float> price
+        :return: void
+        """
+        timestamp = time_to_num(time)
+
+        if self.__timestamp is None:
+            self.__timestamp = timestamp
+
+        if self.__high is None:
+            self.__high = price
+
+        if self.__low is None:
+            self.__low = price
+
+        if timestamp >= self.__timestamp:
+            if price > self.__high:
+                self.__high = price
+
+            if price < self.__low:
+                self.__low = price
+
+            self.__timestamp = timestamp
+            self.__time = time
 
         else:
-            return self.__time_array[-1], self.__ma_value
+            raise Exception("timestamp is out of order")
+
+    def get(self):
+        """
+        :return: (str raw_time, int high, int low)
+        """
+        return self.__time, self.__high, self.__low
+
+
+class SellBuyVolume:
+    def __init__(self, price=None, initial_time=None):
+        """
+        current price  --> next price
+        sell: next price < current price 內盤
+        buy : next price < current price 外盤
+        """
+        self.__last_price = price
+        self.__time = initial_time
+        self.__timestamp = initial_time if initial_time is None else time_to_num(initial_time)
+        self.__sell = 0
+        self.__buy = 0
+
+    def update(self, time, price, volume):
+        """
+        :param time: <str> info_time
+        :param price: <int> or <float> price
+        :param volume: <int> or <float> qty
+        :return: void
+        """
+        timestamp = time_to_num(time)
+
+        if self.__timestamp is None:
+            self.__timestamp = timestamp
+
+        if self.__last_price is None:
+            self.__last_price = price
+
+        if timestamp >= self.__timestamp:
+            if price < self.__last_price:
+                self.__sell += volume
+
+            if price > self.__last_price:
+                self.__buy += volume
+
+            self.__last_price = price
+            self.__timestamp = timestamp
+            self.__time = time
+
+        else:
+            raise Exception("timestamp is out of order")
+
+    def get(self):
+        """
+        :return: (<str> raw_time, <int> current_price, <int> volume of sell, <int> volume of buy)
+        """
+        return self.__time, self.__last_price, self.__sell, self.__buy
