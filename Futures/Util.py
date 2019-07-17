@@ -158,6 +158,7 @@ class HighLowPrice(TechnicalIndicators):
             self.__low = price
 
         if timestamp >= self.__timestamp:
+            # if
             if price > self.__high:
                 self.__high = price
 
@@ -178,20 +179,20 @@ class HighLowPrice(TechnicalIndicators):
 
 
 class OpenHighLowClose(TechnicalIndicators):
-    def __init__(self, period, initial_time):
+    def __init__(self, period):
         self.__open = None
         self.__high = None
         self.__low = None
         self.__close = None
         self.__period = period
         self.__time = None
-        self.__timestamp = time_to_num(initial_time)
+        self.__timestamp = None
 
     def update(self, time, price):
         timestamp = time_to_num(time)
 
-        if self.__time is None:
-            self.__time = time
+        if self.__timestamp is None:
+            self.__timestamp = timestamp
 
         if self.__high is None:
             self.__high = price
@@ -206,14 +207,26 @@ class OpenHighLowClose(TechnicalIndicators):
             self.__close = price
 
         if timestamp >= self.__timestamp:
-            if price > self.__high:
-                self.__high = price
+            timestamp_period = self.__timestamp // self.__period
+            current_period = self.__timestamp // self.__period
 
-            if price < self.__low:
+            if current_period == timestamp_period:
+                if price > self.__high:
+                    self.__high = price
+
+                if price < self.__low:
+                    self.__low = price
+
+                self.__close = price
+
+            else:
+                self.__open = price
+                self.__high = price
                 self.__low = price
+                self.__close = price
 
             self.__timestamp = timestamp
-            self.__time = time
+            self.__time = num_to_time(current_period * self.__period)
 
 
         else:

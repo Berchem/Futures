@@ -163,6 +163,52 @@ class UtilTest(unittest.TestCase):
 
         # graph
 
+    @staticmethod
+    def ohlc_per_min(filename):
+        I020 = [line.strip('\n').split(",") for line in open(filename)][1:]
+        OHLC = []
+        for MatchInfo in I020:
+            MatchInfo[0] = MatchInfo[0].zfill(8)
+            HMTime = MatchInfo[0][0:2] + MatchInfo[0][2:4]
+            MatchPrice = int(MatchInfo[4])
+            if len(OHLC) == 0:
+                OHLC.append([HMTime, MatchPrice, MatchPrice, MatchPrice, MatchPrice])
+            else:
+                if HMTime == OHLC[-1][0]:
+                    if MatchPrice > OHLC[-1][2]:
+                        OHLC[-1][2] = MatchPrice
+                    if MatchPrice < OHLC[-1][3]:
+                        OHLC[-1][3] = MatchPrice
+                    OHLC[-1][4] = MatchPrice
+                else:
+                    OHLC.append([HMTime, MatchPrice, MatchPrice, MatchPrice, MatchPrice])
+            # print OHLC[-1]
+        return OHLC
+
+    def test_ohlc(self):
+        from MypseudoSQL import Table
+        filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
+        data = self.data_util.get_data_from_file(filename, 1)
+        ohlc_obj = OpenHighLowClose(6000)
+        temp = Table(["time", "open", "high", "low", "close"])
+        for row in data.rows:
+            ohlc_obj.update(row["INFO_TIME"], row["PRICE"])
+            # print ohlc_obj.get()
+            temp.insert(ohlc_obj.get())
+
+        print temp.where(lambda row: row["time"] == "08460000").rows[-1]
+
+        # print temp.group_by(["time"], {
+        #     "open": lambda rows: rows[-1]["open"],
+        #     "high": lambda rows: rows[-1]["high"],
+        #     "low": lambda rows: rows[-1]["low"],
+        #     "close": lambda rows: rows[-1]["close"]
+        # }).order_by(lambda row: row["time"]).limit(5)
+
+        ohlc = self.ohlc_per_min(filename)
+        print "\n\n"
+        for i in xrange(5):
+            print ohlc[i]
 
 
 if __name__ == '__main__':
