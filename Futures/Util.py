@@ -2,6 +2,7 @@
 import warnings
 import functools
 import csv
+import abc
 
 
 def deprecated(func):
@@ -58,7 +59,19 @@ def num_to_time(num):
     return HH + MM + SS + ss
 
 
-class MovingAverage:
+class TechnicalIndicators:
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def update(self):
+        pass
+
+    @abc.abstractmethod
+    def get(self):
+        pass
+
+
+class MovingAverage(TechnicalIndicators):
     def __init__(self, interval, period, initial_time):
         """
         :param interval    : <int>, sequence of n values, e.g., 10
@@ -115,7 +128,7 @@ class MovingAverage:
         return self.__time_array[-1], self.__ma_value
 
 
-class HighLowPrice:
+class HighLowPrice(TechnicalIndicators):
     def __init__(self, high=None, low=None, initial_time=None):
         """
         :param high        : <int>
@@ -164,7 +177,53 @@ class HighLowPrice:
         return self.__time, self.__high, self.__low
 
 
-class SellBuyVolume:
+class OpenHighLowClose(TechnicalIndicators):
+    def __init__(self, period, initial_time):
+        self.__open = None
+        self.__high = None
+        self.__low = None
+        self.__close = None
+        self.__period = period
+        self.__time = None
+        self.__timestamp = time_to_num(initial_time)
+
+    def update(self, time, price):
+        timestamp = time_to_num(time)
+
+        if self.__time is None:
+            self.__time = time
+
+        if self.__high is None:
+            self.__high = price
+
+        if self.__low is None:
+            self.__low = price
+
+        if self.__open is None:
+            self.__open = price
+
+        if self.__close is None:
+            self.__close = price
+
+        if timestamp >= self.__timestamp:
+            if price > self.__high:
+                self.__high = price
+
+            if price < self.__low:
+                self.__low = price
+
+            self.__timestamp = timestamp
+            self.__time = time
+
+
+        else:
+            raise Exception("timestamp is out of order")
+
+    def get(self):
+        return self.__time, self.__open, self.__high, self.__low, self.__close
+
+
+class SellBuyVolume(TechnicalIndicators):
     def __init__(self, price=None, initial_time=None):
         """
         current price  --> next price
