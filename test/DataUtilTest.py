@@ -25,3 +25,7 @@ class DataUtilTest(unittest.TestCase):
         self.assertTrue(isinstance(data.columns, list))
         self.assertTrue(isinstance(data.rows, list))
         self.assertTrue(isinstance(data.rows[0], dict))
+
+
+if __name__ == '__main__':
+    unittest.main()

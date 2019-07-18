@@ -9,7 +9,7 @@ class SQLiteUtilTest(unittest.TestCase):
     conf = Config('../test_resources/conf/conf.properties')
     sqlite_util = SQLiteUtil(conf.prop.get("SQLITE", "DATABASE"))
     table_name = "test_table"
-    columns = ['INFO_TIME', 'MATCH_TIME', 'PROD', 'ITEM', 'PRICE', 'QTY', 'AMOUNT', 'MATCH_BUY_CNT', 'MATCH_SELL_CNT']
+    columns = ['DATE', 'INFO_TIME', 'MATCH_TIME', 'PROD', 'ITEM', 'PRICE', 'QTY', 'AMOUNT', 'MATCH_BUY_CNT', 'MATCH_SELL_CNT']
 
     # def test_close(self):
     #     self.sqlite_util.close()
