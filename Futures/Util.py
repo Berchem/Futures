@@ -31,8 +31,8 @@ def read_csv(filename, with_header=True):
 
 def time_to_num(time):
     '''
-    :param time: string, format: HHMMSSss
-    :return: num: int
+    :param  time: <str>, format: HHMMSSss
+    :return: num: <int>
     '''
     time = time.zfill(8)
     time_list = [int(time[i:i+2]) for i in xrange(0, 8, 2)]
@@ -46,8 +46,8 @@ def time_to_num(time):
 
 def num_to_time(num):
     '''
-    :param num: int
-    :return time: string, format: HHMMSSss
+    :param   num: <int>
+    :return time: <str>, format: HHMMSSss
     '''
     ss = "%02d" % (num % 100)
     time = num // 100
@@ -87,20 +87,20 @@ class MovingAverage(TechnicalIndicators):
 
     def update(self, time, price):
         """
-        :param time: <str> info_time
+        :param  time: <str> info_time
         :param price: <int> or <float> price
         :return: void
         """
+        timestamp = time_to_num(time)
+
         if len(self.__ma_array) == 0:
             self.__ma_array.append(price)
             self.__time_array.append(time)
 
             if self.__timestamp is None:
-                self.__timestamp = time_to_num(time)
+                self.__timestamp = timestamp
 
         else:
-            timestamp = time_to_num(time)
-
             if timestamp < time_to_num(self.__time_array[-1]):
                 raise Exception("timestamp is out of order")
 
@@ -142,7 +142,7 @@ class HighLowPrice(TechnicalIndicators):
 
     def update(self, time, price):
         """
-        :param time: <str> info_time
+        :param time : <str> info_time
         :param price: <int> or <float> price
         :return: void
         """
@@ -179,20 +179,26 @@ class HighLowPrice(TechnicalIndicators):
 
 
 class OpenHighLowClose(TechnicalIndicators):
-    def __init__(self, period):
+    def __init__(self, period, initial_time):
+        """
+        :param period      : <int> period for refresh attributes
+        :param initial_time: <str> start time, e.g. "08450000"
+        """
         self.__open = None
         self.__high = None
         self.__low = None
         self.__close = None
         self.__period = period
-        self.__time = None
-        self.__timestamp = None
+        self.__time = initial_time
+        self.__timestamp = time_to_num(initial_time)
 
     def update(self, time, price):
+        """
+        :param time : <str> info_time
+        :param price: <int> or <float> price
+        :return: void
+        """
         timestamp = time_to_num(time)
-
-        if self.__timestamp is None:
-            self.__timestamp = timestamp
 
         if self.__high is None:
             self.__high = price
@@ -206,34 +212,38 @@ class OpenHighLowClose(TechnicalIndicators):
         if self.__close is None:
             self.__close = price
 
-        if timestamp >= self.__timestamp:
-            timestamp_period = self.__timestamp // self.__period
-            current_period = self.__timestamp // self.__period
-
-            if current_period == timestamp_period:
-                if price > self.__high:
-                    self.__high = price
-
-                if price < self.__low:
-                    self.__low = price
-
-                self.__close = price
-
-            else:
-                self.__open = price
-                self.__high = price
-                self.__low = price
-                self.__close = price
-
-            self.__timestamp = timestamp
-            self.__time = num_to_time(current_period * self.__period)
-
-
-        else:
+        if timestamp < time_to_num(self.__time):
             raise Exception("timestamp is out of order")
 
+        if timestamp < self.__timestamp + self.__period:
+            if price > self.__high:
+                self.__high = price
+
+            if price < self.__low:
+                self.__low = price
+
+            self.__close = price
+
+        else:
+            self.__open = price
+            self.__high = price
+            self.__low = price
+            self.__close = price
+            self.__timestamp += self.__period
+
+        self.__time = time
+
     def get(self):
-        return self.__time, self.__open, self.__high, self.__low, self.__close
+        """
+        timestamp : (start time) + n * period
+        open      : opening price to current timestamp
+        high      : highest price to current timestamp
+        low       : lowest price to current timestamp
+        close     : latest price to current timestamp
+        :return: (str timestamp , int open, int, high, int low, int close)
+        """
+        timestamp = num_to_time(self.__timestamp)
+        return timestamp, self.__open, self.__high, self.__low, self.__close
 
 
 class SellBuyVolume(TechnicalIndicators):
@@ -251,8 +261,8 @@ class SellBuyVolume(TechnicalIndicators):
 
     def update(self, time, price, volume):
         """
-        :param time: <str> info_time
-        :param price: <int> or <float> price
+        :param   time: <str> info_time
+        :param  price: <int> or <float> price
         :param volume: <int> or <float> qty
         :return: void
         """
