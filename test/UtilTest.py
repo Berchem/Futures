@@ -162,7 +162,7 @@ class UtilTest(unittest.TestCase):
             # print OHLC[-1]
         return OHLC
 
-    def generate_example_result(self, filename, period):
+    def generate_ohlc_example_result(self, filename, period):
         result = self.ohlc_per_min(filename)
         filter_list = []
         for i, record in enumerate(result):
@@ -196,9 +196,9 @@ class UtilTest(unittest.TestCase):
 
     def test_OpenHighLowClose(self):
         filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
-        period = 65  # minute
+        period = 5 * 60  # minute
         # actual
-        ohlc_example = self.generate_example_result(filename, period)
+        ohlc_example = self.generate_ohlc_example_result(filename, period)
         # expect
         ohlc_group = self.generate_ohlc_result(filename, period, "8450000")
         ohlc_list = [[row["time"][:4], row["open"], row["high"], row["low"], row["close"]] for row in ohlc_group.rows]
@@ -209,22 +209,65 @@ class UtilTest(unittest.TestCase):
         for i in xrange(len(ohlc_list)):
             print "\nexpect: %s\nactual: %s" % (ohlc_list[i], ohlc_example[i])
 
-    # def test_(self):
-    #     from Futures.Config import Config
-    #     path = os.path.dirname(self.test_resource_path)
-    #     path = os.path.join(path, "conf", "conf.properties")
-    #     conf = Config(path)
-    #     database = conf.prop.get("SQLITE", "DATABASE")
-    #     match_table_name = conf.prop.get("SQLITE", "MATCH_TABLE")
-    #     data = self.data_util.get_data_from_sqlite(database, match_table_name)
-    #     select = data.select(["DATE", "INFO_TIME", "PRICE"])
-    #     for i in xrange(45308, 45313):
-    #         print select.rows[i]
-    #
-    #     print time_to_num("")
-    #     print time_to_num("000")
-    #     print time_to_num("00000000")
-    #     print time_to_num("24000000")
+    @staticmethod
+    def volume_count_per_min(filename):
+        I020 = [line.strip('\n').split(",") for line in open(filename)]
+        index_time = I020[0].index("INFO_TIME")
+        index_amount = I020[0].index("AMOUNT")
+        I020 = I020[1:]
+        Qty = []
+        lastAmount = 0
+        for i in I020:
+            MatchInfo = i[index_time].zfill(8)
+            # defined time ticks by minute
+            HMTime = MatchInfo[0:2] + MatchInfo[2:4]
+            MatchAmount = int(i[index_amount])
+            # calculate every minute
+            if len(Qty) == 0:
+                Qty.append([HMTime, 0])
+                lastAmount = MatchAmount
+            else:
+                if HMTime == Qty[-1][0]:
+                    Qty[-1][1] = MatchAmount - lastAmount
+                else:
+                    Qty.append([HMTime, 0])
+                    lastAmount = MatchAmount
+        return Qty
+
+    def generate_volume_count_example_result(self, filename, period):
+        result = self.volume_count_per_min(filename)
+        filter_list = []
+        for i, ele in enumerate(result):
+            if i % period == 0:
+                _time = ele[0]
+                end = i + period if i + period < len(result) else len(result)
+                _volume = sum(j[1] for j in result[i:end])
+                filter_list += [[_time, _volume]]
+        return filter_list
+
+    def generate_volume_count_result(self, filename, period):
+        result = self.data_util.get_data_from_file(filename, 1)
+        volume_count_obj = VolumeCount(period * 6000, "8450000")
+        selected = Table(["time", "volume"])
+        for row in result.rows:
+            volume_count_obj.update(row["INFO_TIME"], int(row["AMOUNT"]))
+            selected.insert(volume_count_obj.get())
+        group = selected.group_by(
+            group_by_columns=["time"],
+            aggregates={"vol": lambda rows: rows[-1]["volume"]}
+        ).order_by(lambda row: row["time"])
+        filter_list = [[row["time"][:4], row["vol"]] for row in group.rows]
+        return filter_list
+
+    def test_VolumeCount(self):
+        filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
+        period = 1
+        # actual
+        volume_count_example = self.generate_volume_count_example_result(filename, period)
+        # expect
+        volume_count = self.generate_volume_count_result(filename, period)
+        # assert
+        self.assertEqual(volume_count_example, volume_count)
 
 
 if __name__ == '__main__':

@@ -293,3 +293,36 @@ class SellBuyVolume(TechnicalIndicators):
         :return: (<str> raw_time, <int> current_price, <int> volume of sell, <int> volume of buy)
         """
         return self.__time, self.__last_price, self.__sell, self.__buy
+
+
+class VolumeCount(TechnicalIndicators):
+    def __init__(self, period, initial_time):
+        self.__period = period
+        self.__time = initial_time
+        self.__timestamp = time_to_num(initial_time)
+        self.__quantity = None
+        self.__last_amount = None
+
+    def update(self, time, amount):
+        timestamp = time_to_num(time)
+
+        if self.__quantity is None:
+            self.__quantity = 0
+
+        if self.__last_amount is None:
+            self.__last_amount = amount
+
+        if timestamp < time_to_num(self.__time):
+            raise Exception("timestamp is out of order")
+
+        if timestamp < self.__timestamp + self.__period:
+            self.__quantity = amount - self.__last_amount
+
+        else:
+            self.__timestamp += self.__period
+            self.__quantity = 0
+            self.__last_amount = amount
+
+    def get(self):
+        timestamp = num_to_time(self.__timestamp)
+        return timestamp, self.__quantity
