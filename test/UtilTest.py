@@ -122,13 +122,13 @@ class UtilTest(unittest.TestCase):
             sell_buy_list.extend([(i[index_time], price, inDesk, outDesk)])
         return sell_buy_list
 
-    def test_SellBuyVolume(self):
+    def test_SimpleSellBuyVolume(self):
         filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
         # actual
         sell_buy_list_example = self.sell_buy_volume(filename)
         # expect
         data = self.data_util.get_data_from_file(filename, 1)
-        sell_buy_obj = SellBuyVolume()
+        sell_buy_obj = SimpleSellBuyVolume()
         sell_buy_list = []
         for row in data.rows:
             sell_buy_obj.update(row["INFO_TIME"], int(row["PRICE"]), int(row["QTY"]))
@@ -302,6 +302,17 @@ class UtilTest(unittest.TestCase):
         # assert
         self.assertEqual(average_volume_list, average_volume_example)
 
+    def test_SellBuyVolume(self):
+        match = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
+        updn = os.path.join(self.test_resource_path, "UpDn5", "Futures_20170815_I080.csv")
+
+        match_table = self.data_util.get_data_from_file(match, 1)
+        updn_table = self.data_util.get_data_from_file(updn, 1)
+
+        print match_table.select(["INFO_TIME", "PRICE", "QTY"]).limit(5)
+        print
+        print updn_table.select(["INFO_TIME", "BUY_PRICE1", "BUY_QTY1", "SELL_PRICE1", "SELL_QTY1"]).limit(5)
+        # TODO: timestamp (INFO_TIME) via different source were mismatch
 
 if __name__ == '__main__':
     unittest.main()

@@ -246,7 +246,7 @@ class OpenHighLowClose(TechnicalIndicators):
         return timestamp, self.__open, self.__high, self.__low, self.__close
 
 
-class SellBuyVolume(TechnicalIndicators):
+class SimpleSellBuyVolume(TechnicalIndicators):
     def __init__(self, price=None, initial_time=None):
         """
         current price  --> next price
@@ -355,3 +355,17 @@ class AverageVolume(TechnicalIndicators):
 
     def get(self):
         return self.__time, self.__avg_buy, self.__avg_sell
+
+
+class SellBuyVolume(TechnicalIndicators):
+    def __init__(self):
+        pass
+
+    def update(self, time, price, up1, down1, volume):
+        # TODO: time, price, volume via match info
+        # TODO: up1, down1 via UpDn5 info
+        # so, the timestamp were mismatch
+        pass
+
+    def get(self):
+        pass
