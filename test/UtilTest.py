@@ -269,6 +269,39 @@ class UtilTest(unittest.TestCase):
         # assert
         self.assertEqual(volume_count_example, volume_count)
 
+    @staticmethod
+    def average_volume(filename):
+        data = [line.strip("\n").split(",") for line in open(filename)]
+        index_time = data[0].index("INFO_TIME")
+        index_amount = data[0].index("AMOUNT")
+        index_buy_count = data[0].index("MATCH_BUY_CNT")
+        index_sell_count = data[0].index("MATCH_SELL_CNT")
+        data = data[1:]
+        result = []
+        for MatchInfo in data:
+            MatchTime = MatchInfo[index_time]
+            MatchAmount = int(MatchInfo[index_amount])
+            MatchBCnt = int(MatchInfo[index_buy_count])
+            MatchSCnt = int(MatchInfo[index_sell_count])
+            avgB = float(MatchAmount) / MatchBCnt
+            avgS = float(MatchAmount) / MatchSCnt
+            result += [(MatchTime, avgB, avgS)]
+        return result
+
+    def test_AverageVolume(self):
+        filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
+        # actual
+        average_volume_example = self.average_volume(filename)
+        # expect
+        data = self.data_util.get_data_from_file(filename, 1)
+        avg_vol_obj = AverageVolume()
+        average_volume_list = []
+        for row in data.rows:
+            avg_vol_obj.update(row["INFO_TIME"], row["AMOUNT"], int(row["MATCH_BUY_CNT"]), int(row["MATCH_SELL_CNT"]))
+            average_volume_list.append(avg_vol_obj.get())
+        # assert
+        self.assertEqual(average_volume_list, average_volume_example)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -297,6 +297,11 @@ class SellBuyVolume(TechnicalIndicators):
 
 class VolumeCount(TechnicalIndicators):
     def __init__(self, period, initial_time):
+        """
+        estimating the trading volume per period
+        :param period      : <int> period for estimating trading volume
+        :param initial_time: <str> initial time, e.g., "8450000"
+        """
         self.__period = period
         self.__time = initial_time
         self.__timestamp = time_to_num(initial_time)
@@ -304,6 +309,11 @@ class VolumeCount(TechnicalIndicators):
         self.__last_amount = None
 
     def update(self, time, amount):
+        """
+        :param time  : <str> time, e.g., "08450010"
+        :param amount: <int> current trading volume
+        :return: void
+        """
         timestamp = time_to_num(time)
 
         if self.__quantity is None:
@@ -324,5 +334,24 @@ class VolumeCount(TechnicalIndicators):
             self.__last_amount = amount
 
     def get(self):
+        """
+        :return: (<str> timestamp, <int> volume in current period)
+        """
         timestamp = num_to_time(self.__timestamp)
         return timestamp, self.__quantity
+
+
+class AverageVolume(TechnicalIndicators):
+    def __init__(self):
+        self.__time = None
+        self.__avg_buy = None
+        self.__avg_sell = None
+
+    def update(self, time, volume, buy_count, sell_count):
+        self.__time = time
+        __volume = float(volume)
+        self.__avg_buy = __volume / buy_count
+        self.__avg_sell = __volume / sell_count
+
+    def get(self):
+        return self.__time, self.__avg_buy, self.__avg_sell
