@@ -268,6 +268,7 @@ class UtilTest(unittest.TestCase):
         volume_count = self.generate_volume_count_result(filename, period)
         # assert
         self.assertEqual(volume_count_example, volume_count)
+        self.assertRaises(Exception, VolumeCount(6000, "8450100").update, "8450000", 777)
 
     @staticmethod
     def average_volume(filename):
@@ -301,6 +302,7 @@ class UtilTest(unittest.TestCase):
             average_volume_list.append(avg_vol_obj.get())
         # assert
         self.assertEqual(average_volume_list, average_volume_example)
+        self.assertRaises(Exception, avg_vol_obj.update, "8450000", 123)
 
     def test_SellBuyVolume(self):
         match = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
@@ -309,9 +311,9 @@ class UtilTest(unittest.TestCase):
         match_table = self.data_util.get_data_from_file(match, 1)
         updn_table = self.data_util.get_data_from_file(updn, 1)
 
-        print match_table.select(["INFO_TIME", "PRICE", "QTY"]).limit(5)
+        print match_table.select(["INFO_TIME", "PRICE", "QTY"]).limit(10)
         print
-        print updn_table.select(["INFO_TIME", "BUY_PRICE1", "BUY_QTY1", "SELL_PRICE1", "SELL_QTY1"]).limit(5)
+        print updn_table.select(["INFO_TIME", "BUY_PRICE1", "BUY_QTY1", "SELL_PRICE1", "SELL_QTY1"]).limit(10)
         # TODO: timestamp (INFO_TIME) via different source were mismatch
 
 if __name__ == '__main__':
