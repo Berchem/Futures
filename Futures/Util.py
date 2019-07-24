@@ -63,7 +63,7 @@ class TechnicalIndicators:
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def update(self):
+    def update(self, *args):
         pass
 
     @abc.abstractmethod
@@ -348,6 +348,14 @@ class AverageVolume(TechnicalIndicators):
         self.__avg_sell = None
 
     def update(self, time, volume, buy_count, sell_count):
+        timestamp = time_to_num(time)
+
+        if self.__time is None:
+            self.__time = time
+
+        if timestamp < time_to_num(self.__time):
+            raise Exception("timestamp is out of order")
+
         self.__time = time
         __volume = float(volume)
         self.__avg_buy = __volume / buy_count
@@ -359,7 +367,13 @@ class AverageVolume(TechnicalIndicators):
 
 class SellBuyVolume(TechnicalIndicators):
     def __init__(self):
-        pass
+        self.__time = None
+        self.__price = None
+        self.__volume = None
+        self.__sell_price_1 = None
+        self.__buy_price_1 = None
+        self.__sell_colume = 0
+        self.__buy_volume = 0
 
     def update(self, time, price, up1, down1, volume):
         # TODO: time, price, volume via match info
