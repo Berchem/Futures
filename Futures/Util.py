@@ -251,7 +251,7 @@ class SimpleSellBuyVolume(TechnicalIndicators):
         """
         current price  --> next price
         sell: next price < current price 內盤
-        buy : next price < current price 外盤
+        buy : next price > current price 外盤
         """
         self.__last_price = price
         self.__time = initial_time
@@ -372,14 +372,33 @@ class SellBuyVolume(TechnicalIndicators):
         self.__volume = None
         self.__sell_price_1 = None
         self.__buy_price_1 = None
-        self.__sell_colume = 0
+        self.__sell_volume = 0
         self.__buy_volume = 0
 
     def update(self, time, price, up1, down1, volume):
-        # TODO: time, price, volume via match info
-        # TODO: up1, down1 via UpDn5 info
-        # so, the timestamp were mismatch
-        pass
+        timestamp = time_to_num(time)
+        if self.__time is None:
+            self.__time = time
+
+        if timestamp < time_to_num(self.__time):
+            raise Exception("timestamp is out of order")
+
+        else:
+            self.__price = price
+            self.__sell_price_1 = down1
+            self.__buy_price_1 = up1
+            self.__volume = volume
+
+            if self.__price < self.__sell_price_1:
+                self.__sell_volume += self.__volume
+
+            elif self.__price > self.__buy_price_1:
+                self.__buy_volume += self.__volume
+
+            else:
+                pass
+
+            self.__time = time
 
     def get(self):
-        pass
+        return self.__time, self.__buy_volume, self.__sell_volume
