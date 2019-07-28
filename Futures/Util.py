@@ -365,40 +365,55 @@ class AverageVolume(TechnicalIndicators):
         return self.__time, self.__avg_buy, self.__avg_sell
 
 
-class SellBuyVolume(TechnicalIndicators):
+class SellBuy(TechnicalIndicators):
     def __init__(self):
         self.__time = None
         self.__price = None
-        self.__volume = None
+        self.__value = None
         self.__sell_price_1 = None
         self.__buy_price_1 = None
-        self.__sell_volume = 0
-        self.__buy_volume = 0
+        self.__sell_value = 0
+        self.__buy_value = 0
 
-    def update(self, time, price, up1, down1, volume):
-        timestamp = time_to_num(time)
+    def __initialize_time(self, time):
         if self.__time is None:
             self.__time = time
 
+    def __is_out_of_order(self, timestamp):
         if timestamp < time_to_num(self.__time):
             raise Exception("timestamp is out of order")
 
-        else:
-            self.__price = price
-            self.__sell_price_1 = down1
-            self.__buy_price_1 = up1
-            self.__volume = volume
+    def update(self, time, price, up1, down1, volume):
+        timestamp = time_to_num(time)
 
-            if self.__price < self.__sell_price_1:
-                self.__sell_volume += self.__volume
+        self.__initialize_time(time)
+        self.__is_out_of_order(timestamp)
 
-            elif self.__price > self.__buy_price_1:
-                self.__buy_volume += self.__volume
+        self.__price = price
+        self.__sell_price_1 = down1
+        self.__buy_price_1 = up1
+        self.__value = volume
 
-            else:
-                pass
+        if self.__price < self.__sell_price_1:
+            self.__sell_value += self.__value
 
-            self.__time = time
+        if self.__price > self.__buy_price_1:
+            self.__buy_value += self.__value
+
+        self.__time = time
 
     def get(self):
-        return self.__time, self.__buy_volume, self.__sell_volume
+        return self.__time, self.__buy_value, self.__sell_value
+
+
+class SellBuyVolume(SellBuy):
+    def __init__(self):
+        SellBuy.__init__(self)
+
+
+class SellBuyCount(SellBuy):
+    def __init__(self):
+        SellBuy.__init__(self)
+
+    def update(self, time, price, up1, down1):
+        SellBuy.update(time, price, up1, down1, 1)

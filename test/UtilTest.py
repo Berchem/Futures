@@ -316,5 +316,6 @@ class UtilTest(unittest.TestCase):
         print updn_table.select(["INFO_TIME", "BUY_PRICE1", "BUY_QTY1", "SELL_PRICE1", "SELL_QTY1"]).limit(10)
         # TODO: timestamp (INFO_TIME) via different source were mismatch
 
+
 if __name__ == '__main__':
     unittest.main()
