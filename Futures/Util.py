@@ -35,7 +35,7 @@ def time_to_num(time):
     :return: num: <int>
     '''
     time = time.zfill(8)
-    time_list = [int(time[i:i+2]) for i in xrange(0, 8, 2)]
+    time_list = [int(time[i:i+2]) for i in range(0, 8, 2)]
     unit_list = ["HH", "MM", "SS", "ss"]
     hash_map = dict(zip(unit_list, time_list))
     hash_map["HH"] *= 360000
@@ -413,7 +413,19 @@ class SellBuyVolume(SellBuy):
 
 class SellBuyCount(SellBuy):
     def __init__(self):
-        SellBuy.__init__(self)
+        super().__init__()
 
     def update(self, time, price, up1, down1):
-        SellBuy.update(time, price, up1, down1, 1)
+        super().update(time, price, up1, down1, 1)
+
+
+class SellBuyRatio(SellBuy):
+    def __init__(self):
+        super().__init__()
+
+    def get(self):
+        time = self._SellBuy__time
+        sell_volume = self._SellBuy__sell_value
+        buy_volume = self._SellBuy__buy_value
+        ratio = buy_volume / float(sell_volume + buy_volume)
+        return time, ratio
