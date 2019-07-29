@@ -413,15 +413,15 @@ class SellBuyVolume(SellBuy):
 
 class SellBuyCount(SellBuy):
     def __init__(self):
-        super().__init__()
+        SellBuy.__init__(self)
 
     def update(self, time, price, up1, down1):
-        super().update(time, price, up1, down1, 1)
+        SellBuy.update(self, time, price, up1, down1, 1)
 
 
 class SellBuyRatio(SellBuy):
     def __init__(self):
-        super().__init__()
+        SellBuy.__init__(self)
 
     def get(self):
         time = self._SellBuy__time
