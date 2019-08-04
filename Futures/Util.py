@@ -421,5 +421,11 @@ class SellBuy(TechnicalIndicators):
             return self.__get_volume()
 
         elif key == "count":
+            return self.__get_count()
+
+        elif key == "ratio":
             return self.__get_ratio()
+
+        else:
+            raise Exception("given key: volume, count or ratio. ")
 

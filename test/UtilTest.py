@@ -205,10 +205,6 @@ class UtilTest(unittest.TestCase):
         # assert
         self.assertEqual(ohlc_list, ohlc_example)
 
-        print "\n\n"
-        for i in xrange(len(ohlc_list)):
-            print "\nexpect: %s\nactual: %s" % (ohlc_list[i], ohlc_example[i])
-
     @staticmethod
     def volume_count_per_min(filename):
         I020 = [line.strip('\n').split(",") for line in open(filename)]
@@ -311,10 +307,20 @@ class UtilTest(unittest.TestCase):
         match_table = self.data_util.get_data_from_file(match, 1)
         updn_table = self.data_util.get_data_from_file(updn, 1)
 
-        print match_table.select(["INFO_TIME", "PRICE", "QTY"]).limit(10)
-        print
-        print updn_table.select(["INFO_TIME", "BUY_PRICE1", "BUY_QTY1", "SELL_PRICE1", "SELL_QTY1"]).limit(10)
-        # TODO: timestamp (INFO_TIME) via different source were mismatch
+        print(match_table.select(["INFO_TIME", "PRICE", "QTY"]).limit(10))
+        print()
+        # print(updn_table.select(["INFO_TIME", "BUY_PRICE1", "SELL_PRICE1"]).limit(50))
+
+        # ct = 0
+        # for row in updn_table.rows:
+        #     buy1p = int(row["BUY_PRICE1"])
+        #     sell1p = int(row["SELL_PRICE1"])
+        #     if buy1p > sell1p:
+        #         print('INFO_TIME: {}, BUY_PRICE1: {}, SELL_PRICE1'.format(
+        #             row["INFO_TIME"], buy1p, sell1p))
+        #         ct += 1
+        #     if ct == 5:
+        #         break
 
     def test_(self):
         filename = os.path.join(self.test_resource_path, "COMMISSION", "Futures_20170815_I030.csv")
