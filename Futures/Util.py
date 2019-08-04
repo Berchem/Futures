@@ -373,7 +373,9 @@ class SellBuy(TechnicalIndicators):
         self.__sell_price_1 = None
         self.__buy_price_1 = None
         self.__sell_value = 0
+        self.__sell_count = 0
         self.__buy_value = 0
+        self.__buy_count = 0
 
     def __initialize_time(self, time):
         if self.__time is None:
@@ -396,36 +398,28 @@ class SellBuy(TechnicalIndicators):
 
         if self.__price < self.__sell_price_1:
             self.__sell_value += self.__value
+            self.__sell_count += 1
 
         if self.__price > self.__buy_price_1:
             self.__buy_value += self.__value
+            self.__buy_count += 1
 
         self.__time = time
 
-    def get(self):
+    def __get_volume(self):
         return self.__time, self.__buy_value, self.__sell_value
 
+    def __get_ratio(self):
+        return self.__time, self.__buy_value / float(self.__sell_value + self.__buy_value)
 
-class SellBuyVolume(SellBuy):
-    def __init__(self):
-        SellBuy.__init__(self)
+    def __get_count(self):
+        return self.__time, self.__buy_count, self.__sell_count
 
+    def get(self, info):
+        key = info.lower()
+        if key == "volume":
+            return self.__get_volume()
 
-class SellBuyCount(SellBuy):
-    def __init__(self):
-        SellBuy.__init__(self)
+        elif key == "count":
+            return self.__get_ratio()
 
-    def update(self, time, price, up1, down1):
-        SellBuy.update(self, time, price, up1, down1, 1)
-
-
-class SellBuyRatio(SellBuy):
-    def __init__(self):
-        SellBuy.__init__(self)
-
-    def get(self):
-        time = self._SellBuy__time
-        sell_volume = self._SellBuy__sell_value
-        buy_volume = self._SellBuy__buy_value
-        ratio = buy_volume / float(sell_volume + buy_volume)
-        return time, ratio
