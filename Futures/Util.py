@@ -439,10 +439,27 @@ class OrderInfo(TechnicalIndicators):
         self.__buy_count = None
 
         self.__diff_order = None
+        self.
 
     def update(self, time, sell_volume, sell_count, buy_volume, buy_count):
         timestamp = time_to_num(time)
 
+        if self.__time is None:
+            self.__time = time
 
-    def get(self):
-        pass
+        if timestamp < time_to_num(self.__time):
+            raise Exception("timestamp is out of order")
+
+        self.__time = time
+        self.__sell_volume = float(sell_volume)
+        self.__sell_count = float(sell_count)
+        self.__buy_volume = float(buy_volume)
+        self.__buy_count = float(buy_count)
+        self.__diff_order = self.__buy_volume - self.__sell_volume
+
+    def get(self, info):
+        key = info.lower()
+        if key == "diff":
+            return self.__diff_order
+
+
