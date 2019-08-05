@@ -429,3 +429,20 @@ class SellBuy(TechnicalIndicators):
         else:
             raise Exception("given key: volume, count or ratio. ")
 
+
+class OrderInfo(TechnicalIndicators):
+    def __init__(self):
+        self.__time = None
+        self.__sell_volume = None
+        self.__sell_count = None
+        self.__buy_volume = None
+        self.__buy_count = None
+
+        self.__diff_order = None
+
+    def update(self, time, sell_volume, sell_count, buy_volume, buy_count):
+        timestamp = time_to_num(time)
+
+
+    def get(self):
+        pass

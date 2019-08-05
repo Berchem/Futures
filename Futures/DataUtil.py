@@ -16,7 +16,7 @@ class DataUtil:
                 self.__table.insert(row)
         else:  # False, file is without headers
             raw_data = read_csv(filename, with_header=with_header)
-            columns = ["col_{}".format(i) for i in xrange(len(raw_data[0]))]
+            columns = ["col_{}".format(i) for i in range(len(raw_data[0]))]
             self.__table = Table(columns)
             for row in raw_data:
                 self.__table.insert(row)
