@@ -433,13 +433,18 @@ class SellBuy(TechnicalIndicators):
 class OrderInfo(TechnicalIndicators):
     def __init__(self):
         self.__time = None
+        self.__sell_volume_latest = None
         self.__sell_volume = None
         self.__sell_count = None
+        self.__buy_volume_latest = None
         self.__buy_volume = None
         self.__buy_count = None
 
+        self.__diff_sell_volume = None
+        self.__diff_buy_volume = None
         self.__diff_order = None
-        self.
+        self.__avg_sell = None
+        self.__avg_buy = None
 
     def update(self, time, sell_volume, sell_count, buy_volume, buy_count):
         timestamp = time_to_num(time)
@@ -447,19 +452,43 @@ class OrderInfo(TechnicalIndicators):
         if self.__time is None:
             self.__time = time
 
+        if self.__diff_sell_volume is None:
+            self.__sell_volume_latest = float(sell_volume)
+
+        if self.__buy_volume_latest is None:
+            self.__buy_volume_latest = float(buy_volume)
+
         if timestamp < time_to_num(self.__time):
             raise Exception("timestamp is out of order")
 
+        # ===== raw info =====
         self.__time = time
         self.__sell_volume = float(sell_volume)
         self.__sell_count = float(sell_count)
         self.__buy_volume = float(buy_volume)
         self.__buy_count = float(buy_count)
+        # ==== indicators ====
+        # difference of volume: buy - sell
         self.__diff_order = self.__buy_volume - self.__sell_volume
+        # cumulative average volume: volume / count
+        self.__avg_sell = self.__sell_volume / self.__sell_count
+        self.__avg_buy = self.__buy_volume / self.__buy_count
+        # current difference
+        self.__diff_sell_volume = self.__sell_volume - self.__sell_volume_latest
+        self.__diff_buy_volume = self.__buy_volume - self.__buy_volume_latest
+        self.__sell_volume_latest = self.__sell_volume
+        self.__buy_volume_latest = self.__buy_volume
 
     def get(self, info):
         key = info.lower()
         if key == "diff":
-            return self.__diff_order
+            return self.__time, self.__diff_order
 
+        elif key == "avg":
+            return self.__time, self.__avg_sell, self.__avg_buy
 
+        elif key == "current":
+            return self.__time, self.__sell_volume_latest, self.__buy_volume_latest
+
+        else:
+            raise Exception("given key: volume, count or ratio. ")
