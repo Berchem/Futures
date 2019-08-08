@@ -21,6 +21,7 @@ class UtilTest(unittest.TestCase):
     def test_num_to_time(self):
         self.assertEqual(num_to_time(3150830), "08450830")
 
+# -----------------------------------------------------------------
     @staticmethod
     def ma_example(filename):
         # 24.py
@@ -57,7 +58,7 @@ class UtilTest(unittest.TestCase):
         # actual
         ma_list_example = self.ma_example(filename)
         # expect
-        ma_obj = MovingAverage(5, 6000, "8450000")
+        ma_obj = MovingAverage("8450000", 6000, 5)
         data = self.data_util.get_data_from_file(filename, True)
         ma_list = []
         for row in data.rows:
@@ -67,76 +68,7 @@ class UtilTest(unittest.TestCase):
         self.assertEqual(ma_list, ma_list_example)
         self.assertRaises(Exception, ma_obj.update, "123", 456)
 
-    @staticmethod
-    def high_low_price(filename):
-        I020 = [line.strip('\n').split(",") for line in open(filename)]
-        index_time = I020[0].index("INFO_TIME")
-        index_price = I020[0].index("PRICE")
-        I020 = I020[1:]
-        high = int(I020[0][index_price])
-        low = int(I020[0][index_price])
-        high_low_list = [(I020[0][index_time], high, low)]
-        for i in I020[1:]:
-            price = int(i[index_price])
-            if price > high:
-                high = price
-            if price < low:
-                low = price
-            high_low_list.extend([(i[index_time], high, low)])
-        return high_low_list
-
-    def test_HighLowPrice(self):
-        filename = os.path.join(self.test_resource_path, 'MATCH', 'Futures_20170815_I020.csv')
-        # actual
-        high_low_list_example = self.high_low_price(filename)
-        # expect
-        data = self.data_util.get_data_from_file(filename, True)
-        high_low_obj = HighLowPrice()
-        high_low_list = []
-        for row in data.rows:
-            high_low_obj.update(row["INFO_TIME"], int(row["PRICE"]))
-            high_low_list.extend([high_low_obj.get()])
-        # assert
-        self.assertEqual(high_low_list, high_low_list_example)
-        self.assertRaises(Exception, high_low_obj.update, data.rows[0]["INFO_TIME"], 1)
-
-    @staticmethod
-    def sell_buy_volume(filename):
-        I020 = [line.strip('\n').split(",") for line in open(filename)]
-        index_time = I020[0].index("INFO_TIME")
-        index_price = I020[0].index("PRICE")
-        index_qty = I020[0].index("QTY")
-        I020 = I020[1:]
-        lastPrice = int(I020[0][index_price])
-        outDesk = 0
-        inDesk = 0
-        sell_buy_list = [(I020[0][index_time], lastPrice, inDesk, outDesk)]
-        for i in I020[1:]:
-            price = int(i[index_price])
-            qty = int(i[index_qty])
-            if price > lastPrice:
-                outDesk += qty
-            if price < lastPrice:
-                inDesk += qty
-            lastPrice = price
-            sell_buy_list.extend([(i[index_time], price, inDesk, outDesk)])
-        return sell_buy_list
-
-    def test_SimpleSellBuyVolume(self):
-        filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
-        # actual
-        sell_buy_list_example = self.sell_buy_volume(filename)
-        # expect
-        data = self.data_util.get_data_from_file(filename, 1)
-        sell_buy_obj = SimpleSellBuyVolume()
-        sell_buy_list = []
-        for row in data.rows:
-            sell_buy_obj.update(row["INFO_TIME"], int(row["PRICE"]), int(row["QTY"]))
-            sell_buy_list += [sell_buy_obj.get()]
-        # assert
-        self.assertEqual(sell_buy_list, sell_buy_list_example)
-        self.assertRaises(Exception, sell_buy_obj.update, data.rows[0]["INFO_TIME"], 1, 1)
-
+# -----------------------------------------------------------------
     @staticmethod
     def ohlc_per_min(filename):
         I020 = [line.strip('\n').split(",") for line in open(filename)]
@@ -178,7 +110,7 @@ class UtilTest(unittest.TestCase):
 
     def generate_ohlc_result(self, filename, period, initial_time):
         data = self.data_util.get_data_from_file(filename, 1)
-        ohlc_obj = OpenHighLowClose(period * 6000, initial_time)
+        ohlc_obj = OpenHighLowClose(initial_time, period * 6000)
         ohlc_table = Table(["time", "open", "high", "low", "close"])
         for row in data.rows:
             ohlc_obj.update(row["INFO_TIME"], int(row["PRICE"]))
@@ -205,6 +137,7 @@ class UtilTest(unittest.TestCase):
         # assert
         self.assertEqual(ohlc_list, ohlc_example)
 
+# -----------------------------------------------------------------
     @staticmethod
     def volume_count_per_min(filename):
         I020 = [line.strip('\n').split(",") for line in open(filename)]
@@ -243,7 +176,7 @@ class UtilTest(unittest.TestCase):
 
     def generate_volume_count_result(self, filename, period):
         result = self.data_util.get_data_from_file(filename, 1)
-        volume_count_obj = VolumeCount(period * 6000, "8450000")
+        volume_count_obj = VolumeCount("8450000", period * 6000)
         selected = Table(["time", "volume"])
         for row in result.rows:
             volume_count_obj.update(row["INFO_TIME"], int(row["AMOUNT"]))
@@ -264,8 +197,43 @@ class UtilTest(unittest.TestCase):
         volume_count = self.generate_volume_count_result(filename, period)
         # assert
         self.assertEqual(volume_count_example, volume_count)
-        self.assertRaises(Exception, VolumeCount(6000, "8450100").update, "8450000", 777)
+        self.assertRaises(Exception, VolumeCount("8450100", 6000).update, "8450000", 777)
 
+# -----------------------------------------------------------------
+    @staticmethod
+    def high_low_price(filename):
+        I020 = [line.strip('\n').split(",") for line in open(filename)]
+        index_time = I020[0].index("INFO_TIME")
+        index_price = I020[0].index("PRICE")
+        I020 = I020[1:]
+        high = int(I020[0][index_price])
+        low = int(I020[0][index_price])
+        high_low_list = [(I020[0][index_time], high, low)]
+        for i in I020[1:]:
+            price = int(i[index_price])
+            if price > high:
+                high = price
+            if price < low:
+                low = price
+            high_low_list.extend([(i[index_time], high, low)])
+        return high_low_list
+
+    def test_HighLowPrice(self):
+        filename = os.path.join(self.test_resource_path, 'MATCH', 'Futures_20170815_I020.csv')
+        # actual
+        high_low_list_example = self.high_low_price(filename)
+        # expect
+        data = self.data_util.get_data_from_file(filename, True)
+        high_low_obj = HighLowPrice()
+        high_low_list = []
+        for row in data.rows:
+            high_low_obj.update(row["INFO_TIME"], int(row["PRICE"]))
+            high_low_list.extend([high_low_obj.get()])
+        # assert
+        self.assertEqual(high_low_list, high_low_list_example)
+        self.assertRaises(Exception, high_low_obj.update, data.rows[0]["INFO_TIME"], 1)
+
+# -----------------------------------------------------------------
     @staticmethod
     def average_volume(filename):
         data = [line.strip("\n").split(",") for line in open(filename)]
@@ -300,6 +268,45 @@ class UtilTest(unittest.TestCase):
         self.assertEqual(average_volume_list, average_volume_example)
         self.assertRaises(Exception, avg_vol_obj.update, "8450000", 123)
 
+# -----------------------------------------------------------------
+    @staticmethod
+    def sell_buy_volume(filename):
+        I020 = [line.strip('\n').split(",") for line in open(filename)]
+        index_time = I020[0].index("INFO_TIME")
+        index_price = I020[0].index("PRICE")
+        index_qty = I020[0].index("QTY")
+        I020 = I020[1:]
+        lastPrice = int(I020[0][index_price])
+        outDesk = 0
+        inDesk = 0
+        sell_buy_list = [(I020[0][index_time], lastPrice, inDesk, outDesk)]
+        for i in I020[1:]:
+            price = int(i[index_price])
+            qty = int(i[index_qty])
+            if price > lastPrice:
+                outDesk += qty
+            if price < lastPrice:
+                inDesk += qty
+            lastPrice = price
+            sell_buy_list.extend([(i[index_time], price, inDesk, outDesk)])
+        return sell_buy_list
+
+    def test_SimpleSellBuyVolume(self):
+        filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
+        # actual
+        sell_buy_list_example = self.sell_buy_volume(filename)
+        # expect
+        data = self.data_util.get_data_from_file(filename, 1)
+        sell_buy_obj = SimpleSellBuyVolume()
+        sell_buy_list = []
+        for row in data.rows:
+            sell_buy_obj.update(row["INFO_TIME"], int(row["PRICE"]), int(row["QTY"]))
+            sell_buy_list += [sell_buy_obj.get()]
+        # assert
+        self.assertEqual(sell_buy_list, sell_buy_list_example)
+        self.assertRaises(Exception, sell_buy_obj.update, data.rows[0]["INFO_TIME"], 1, 1)
+
+# -----------------------------------------------------------------
     def test_SellBuy(self):
         match = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
         updn = os.path.join(self.test_resource_path, "UpDn5", "Futures_20170815_I080.csv")
