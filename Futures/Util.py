@@ -3,6 +3,7 @@ import warnings
 import functools
 import csv
 import abc
+from abc import ABC
 
 
 def deprecated(func):
@@ -59,8 +60,13 @@ def num_to_time(num):
     return HH + MM + SS + ss
 
 
-class TechnicalIndicators:
-    __metaclass__ = abc.ABCMeta
+class _TechnicalIndicators(ABC):
+    def __init__(self):
+        self._time = None
+
+    def _is_out_of_order(self, timestamp):
+        if timestamp < time_to_num(self._time):
+            raise Exception("timestamp is out of order")
 
     @abc.abstractmethod
     def update(self, *args):
@@ -71,16 +77,32 @@ class TechnicalIndicators:
         pass
 
 
-class MovingAverage(TechnicalIndicators):
-    def __init__(self, interval, period, initial_time):
+class _Batched(_TechnicalIndicators, ABC):
+    def __init__(self, initial_time, period):
+        """
+        :param initial_time: <str>, start time, e.g., "08450000"
+        :param period      : <int>, period for updating sequence, e.g., 6000 for 1 minute
+        """
+        self._time = initial_time
+        self._timestamp = time_to_num(initial_time)
+        self._period = period
+
+
+class _Continuous(_TechnicalIndicators, ABC):
+    def _initialize_time(self, time):
+        if self._time is None:
+            self._time = time
+
+
+class MovingAverage(_Batched):
+    def __init__(self, initial_time, period, interval):
         """
         :param interval    : <int>, sequence of n values, e.g., 10
         :param period      : <int>, period for updating sequence, e.g., 6000 for 1 minute
         :param initial_time: <str>, start time, e.g., "08450000"
         """
+        _Batched.__init__(self, initial_time, period)
         self.__interval = interval
-        self.__period = period
-        self.__timestamp = time_to_num(initial_time)
         self.__ma_value = None
         self.__ma_array = []
         self.__time_array = []
@@ -97,27 +119,24 @@ class MovingAverage(TechnicalIndicators):
             self.__ma_array.append(price)
             self.__time_array.append(time)
 
-            if self.__timestamp is None:
-                self.__timestamp = timestamp
+        # throw exception
+        self._is_out_of_order(timestamp)
+
+        # updating
+        if timestamp < self._timestamp + self._period:
+            self.__ma_array[-1] = price
+            self.__time_array[-1] = time
 
         else:
-            if timestamp < time_to_num(self.__time_array[-1]):
-                raise Exception("timestamp is out of order")
+            self._timestamp += self._period
 
-            if timestamp < self.__timestamp + self.__period:
-                self.__ma_array[-1] = price
-                self.__time_array[-1] = time
+            if len(self.__ma_array) == self.__interval:
+                self.__ma_array = self.__ma_array[1:] + [price]
+                self.__time_array = self.__time_array[1:] + [time]
 
             else:
-                self.__timestamp += self.__period
-
-                if len(self.__ma_array) == self.__interval:
-                    self.__ma_array = self.__ma_array[1:] + [price]
-                    self.__time_array = self.__time_array[1:] + [time]
-
-                else:
-                    self.__ma_array.append(price)
-                    self.__time_array.append(time)
+                self.__ma_array.append(price)
+                self.__time_array.append(time)
 
         self.__ma_value = float(sum(self.__ma_array)) / len(self.__ma_array)
 
@@ -128,69 +147,17 @@ class MovingAverage(TechnicalIndicators):
         return self.__time_array[-1], self.__ma_value
 
 
-class HighLowPrice(TechnicalIndicators):
-    def __init__(self, high=None, low=None, initial_time=None):
-        """
-        :param high        : <int>
-        :param low         : <int>
-        :param initial_time: <str>, start time, e.g., "08450000"
-        """
-        self.__high = high
-        self.__low = low
-        self.__time = initial_time
-        self.__timestamp = initial_time if initial_time is None else time_to_num(initial_time)
-
-    def update(self, time, price):
-        """
-        :param time : <str> info_time
-        :param price: <int> or <float> price
-        :return: void
-        """
-        timestamp = time_to_num(time)
-
-        if self.__timestamp is None:
-            self.__timestamp = timestamp
-
-        if self.__high is None:
-            self.__high = price
-
-        if self.__low is None:
-            self.__low = price
-
-        if timestamp >= self.__timestamp:
-            # if
-            if price > self.__high:
-                self.__high = price
-
-            if price < self.__low:
-                self.__low = price
-
-            self.__timestamp = timestamp
-            self.__time = time
-
-        else:
-            raise Exception("timestamp is out of order")
-
-    def get(self):
-        """
-        :return: (str raw_time, int high, int low)
-        """
-        return self.__time, self.__high, self.__low
-
-
-class OpenHighLowClose(TechnicalIndicators):
-    def __init__(self, period, initial_time):
+class OpenHighLowClose(_Batched):
+    def __init__(self, initial_time, period):
         """
         :param period      : <int> period for refresh attributes
         :param initial_time: <str> start time, e.g. "08450000"
         """
+        _Batched.__init__(self, initial_time, period)
         self.__open = None
         self.__high = None
         self.__low = None
         self.__close = None
-        self.__period = period
-        self.__time = initial_time
-        self.__timestamp = time_to_num(initial_time)
 
     def update(self, time, price):
         """
@@ -212,10 +179,9 @@ class OpenHighLowClose(TechnicalIndicators):
         if self.__close is None:
             self.__close = price
 
-        if timestamp < time_to_num(self.__time):
-            raise Exception("timestamp is out of order")
+        self._is_out_of_order(timestamp)
 
-        if timestamp < self.__timestamp + self.__period:
+        if timestamp < self._timestamp + self._period:
             if price > self.__high:
                 self.__high = price
 
@@ -229,9 +195,9 @@ class OpenHighLowClose(TechnicalIndicators):
             self.__high = price
             self.__low = price
             self.__close = price
-            self.__timestamp += self.__period
+            self._timestamp += self._period
 
-        self.__time = time
+        self._time = time
 
     def get(self):
         """
@@ -242,69 +208,18 @@ class OpenHighLowClose(TechnicalIndicators):
         close     : latest price to current timestamp
         :return: (str timestamp , int open, int, high, int low, int close)
         """
-        timestamp = num_to_time(self.__timestamp)
-        return timestamp, self.__open, self.__high, self.__low, self.__close
+        time = num_to_time(self._timestamp)
+        return time, self.__open, self.__high, self.__low, self.__close
 
 
-class SimpleSellBuyVolume(TechnicalIndicators):
-    def __init__(self, price=None, initial_time=None):
-        """
-        current price  --> next price
-        sell: next price < current price 內盤
-        buy : next price > current price 外盤
-        """
-        self.__last_price = price
-        self.__time = initial_time
-        self.__timestamp = initial_time if initial_time is None else time_to_num(initial_time)
-        self.__sell = 0
-        self.__buy = 0
-
-    def update(self, time, price, volume):
-        """
-        :param   time: <str> info_time
-        :param  price: <int> or <float> price
-        :param volume: <int> or <float> qty
-        :return: void
-        """
-        timestamp = time_to_num(time)
-
-        if self.__timestamp is None:
-            self.__timestamp = timestamp
-
-        if self.__last_price is None:
-            self.__last_price = price
-
-        if timestamp >= self.__timestamp:
-            if price < self.__last_price:
-                self.__sell += volume
-
-            if price > self.__last_price:
-                self.__buy += volume
-
-            self.__last_price = price
-            self.__timestamp = timestamp
-            self.__time = time
-
-        else:
-            raise Exception("timestamp is out of order")
-
-    def get(self):
-        """
-        :return: (<str> raw_time, <int> current_price, <int> volume of sell, <int> volume of buy)
-        """
-        return self.__time, self.__last_price, self.__sell, self.__buy
-
-
-class VolumeCount(TechnicalIndicators):
-    def __init__(self, period, initial_time):
+class VolumeCount(_Batched):
+    def __init__(self, initial_time, period):
         """
         estimating the trading volume per period
-        :param period      : <int> period for estimating trading volume
         :param initial_time: <str> initial time, e.g., "8450000"
+        :param period      : <int> period for estimating trading volume
         """
-        self.__period = period
-        self.__time = initial_time
-        self.__timestamp = time_to_num(initial_time)
+        _Batched.__init__(self, initial_time, period)
         self.__quantity = None
         self.__last_amount = None
 
@@ -322,14 +237,13 @@ class VolumeCount(TechnicalIndicators):
         if self.__last_amount is None:
             self.__last_amount = amount
 
-        if timestamp < time_to_num(self.__time):
-            raise Exception("timestamp is out of order")
+        self._is_out_of_order(timestamp)
 
-        if timestamp < self.__timestamp + self.__period:
+        if timestamp < self._timestamp + self._period:
             self.__quantity = amount - self.__last_amount
 
         else:
-            self.__timestamp += self.__period
+            self._timestamp += self._period
             self.__quantity = 0
             self.__last_amount = amount
 
@@ -337,35 +251,143 @@ class VolumeCount(TechnicalIndicators):
         """
         :return: (<str> timestamp, <int> volume in current period)
         """
-        timestamp = num_to_time(self.__timestamp)
-        return timestamp, self.__quantity
+        time = num_to_time(self._timestamp)
+        return time, self.__quantity
 
 
-class AverageVolume(TechnicalIndicators):
+class HighLowPrice(_Continuous):
     def __init__(self):
-        self.__time = None
+        """
+        :param: void
+        """
+        _Continuous.__init__(self)
+        self.__high = None
+        self.__low = None
+
+    def _initialize_high_low(self, price):
+        """
+        initilaized high & low price
+        :param price: <int> or <float> price
+        :return: void
+        """
+        if self.__high is None or self.__low is None:
+            self.__high = price
+            self.__low = price
+
+    def update(self, time, price):
+        """
+        :param time : <str> info_time
+        :param price: <int> or <float> price
+        :return: void
+        """
+        timestamp = time_to_num(time)
+
+        # initialized attributes
+        self._initialize_time(time)
+        self._initialize_high_low(price)
+
+        # throw exception
+        self._is_out_of_order(timestamp)
+
+        # updating
+        if price > self.__high:
+            self.__high = price
+
+        if price < self.__low:
+            self.__low = price
+
+        self._time = time
+
+    def get(self):
+        """
+        :return: (str raw_time, int high, int low)
+        """
+        return self._time, self.__high, self.__low
+
+
+class AverageVolume(_Continuous):
+    def __init__(self):
+        """
+        :param: void
+        """
+        _Continuous.__init__(self)
         self.__avg_buy = None
         self.__avg_sell = None
 
     def update(self, time, volume, buy_count, sell_count):
         timestamp = time_to_num(time)
 
-        if self.__time is None:
-            self.__time = time
+        # initialized attributes
+        self._initialize_time(time)
 
-        if timestamp < time_to_num(self.__time):
-            raise Exception("timestamp is out of order")
+        # throw exception
+        self._is_out_of_order(timestamp)
 
-        self.__time = time
+        # updating
         __volume = float(volume)
         self.__avg_buy = __volume / buy_count
         self.__avg_sell = __volume / sell_count
+        self._time = time
 
     def get(self):
-        return self.__time, self.__avg_buy, self.__avg_sell
+        return self._time, self.__avg_buy, self.__avg_sell
 
 
-class SellBuy(TechnicalIndicators):
+class SimpleSellBuyVolume(_Continuous):
+    def __init__(self):
+        """
+        current price  --> next price
+        sell: next price < current price 內盤
+        buy : next price > current price 外盤
+        """
+        _Continuous.__init__(self)
+        self.__last_price = None
+        self.__sell = 0
+        self.__buy = 0
+
+    def _initialize_last_price(self, price):
+        """
+        initialized last price
+        :param price: <int> or <float> price
+        :return: void
+        """
+        if self.__last_price is None:
+            self.__last_price = price
+
+    def update(self, time, price, volume):
+        """
+        :param   time: <str> info_time
+        :param  price: <int> or <float> price
+        :param volume: <int> or <float> qty
+        :return: void
+        """
+        timestamp = time_to_num(time)
+
+        # initialized attributes
+        self._initialize_time(time)
+        self._initialize_last_price(price)
+
+        # throw exception
+        self._is_out_of_order(timestamp)
+
+        # updating
+        if price < self.__last_price:
+            self.__sell += volume
+
+        if price > self.__last_price:
+            self.__buy += volume
+
+        self.__last_price = price
+        self._time = time
+
+    def get(self):
+        """
+        :return: (<str> raw_time, <int> current_price, <int> volume of sell, <int> volume of buy)
+        """
+        return self._time, self.__last_price, self.__sell, self.__buy
+
+
+class SellBuy(_Continuous):
     def __init__(self):
         self.__time = None
         self.__price = None
@@ -376,14 +398,6 @@ class SellBuy(TechnicalIndicators):
         self.__sell_count = 0
         self.__buy_value = 0
         self.__buy_count = 0
-
-    def __initialize_time(self, time):
-        if self.__time is None:
-            self.__time = time
-
-    def __is_out_of_order(self, timestamp):
-        if timestamp < time_to_num(self.__time):
-            raise Exception("timestamp is out of order")
 
     def update(self, time, price, up1, down1, volume):
         timestamp = time_to_num(time)
@@ -430,7 +444,7 @@ class SellBuy(TechnicalIndicators):
             raise Exception("given key: volume, count or ratio. ")
 
 
-class OrderInfo(TechnicalIndicators):
+class OrderInfo(_Continuous):
     def __init__(self):
         self.__time = None
         self.__sell_volume_latest = None
