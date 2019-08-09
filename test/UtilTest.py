@@ -307,6 +307,7 @@ class UtilTest(unittest.TestCase):
         self.assertRaises(Exception, sell_buy_obj.update, data.rows[0]["INFO_TIME"], 1, 1)
 
 # -----------------------------------------------------------------
+    # TODO: see also 56-1, 56-2, 57
     def test_SellBuy(self):
         match = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
         updn = os.path.join(self.test_resource_path, "UpDn5", "Futures_20170815_I080.csv")
@@ -314,27 +315,75 @@ class UtilTest(unittest.TestCase):
         match_table = self.data_util.get_data_from_file(match, 1)
         updn_table = self.data_util.get_data_from_file(updn, 1)
 
-        print(match_table.select(["INFO_TIME", "PRICE", "QTY"]).limit(10))
-        print()
-        # print(updn_table.select(["INFO_TIME", "BUY_PRICE1", "SELL_PRICE1"]).limit(50))
+        print(match_table.select(["INFO_TIME", "PRICE", "QTY"]).limit(1))
+        print(updn_table.limit(1))
 
-        # ct = 0
-        # for row in updn_table.rows:
-        #     buy1p = int(row["BUY_PRICE1"])
-        #     sell1p = int(row["SELL_PRICE1"])
-        #     if buy1p > sell1p:
-        #         print('INFO_TIME: {}, BUY_PRICE1: {}, SELL_PRICE1'.format(
-        #             row["INFO_TIME"], buy1p, sell1p))
-        #         ct += 1
-        #     if ct == 5:
-        #         break
+# -----------------------------------------------------------------
+    def diff_commission_volume(self, filename):
+        data = self.data_util.get_data_from_file(filename, 1)
+        results = [
+            (
+                row["INFO_TIME"],
+                int(row["BUY_QTY"]) - int(row["SELL_QTY"])
+            ) for row in data.rows]
+        return results
 
+    def avg_commission_volume(self, filename):
+        data = self.data_util.get_data_from_file(filename, 1)
+        results = [
+            (
+                row["INFO_TIME"],
+                float(row["SELL_QTY"]) / float(row["SELL_ORDER"]),
+                float(row["BUY_QTY"]) / float(row["BUY_ORDER"])
+            ) for row in data.rows]
+        return results
+
+    def current_commission_volume(self, filename):
+        data = self.data_util.get_data_from_file(filename, 1)
+        results = []
+        for i, row in enumerate(data.rows):
+            if i == 0:
+                pre_row = data.rows[0]
+            else:
+                pre_row = data.rows[i-1]
+            s_val = float(row["SELL_QTY"]) - int(pre_row["SELL_QTY"])
+            b_val = float(row["BUY_QTY"]) - int(pre_row["BUY_QTY"])
+            results += [(row["INFO_TIME"], s_val, b_val)]
+        return results
+
+    def test_CommissionInfo(self):
+        filename = os.path.join(self.test_resource_path, "COMMISSION", "Futures_20170815_I030.csv")
+        data = self.data_util.get_data_from_file(filename, 1)
+        # diff volume of commission
+        diff_example = self.diff_commission_volume(filename)
+        # avg volume
+        avg_example = self.avg_commission_volume(filename)
+        # current S/B volume
+        current_example = self.current_commission_volume(filename)
+
+        diff_list = []
+        avg_list = []
+        current_list = []
+        commission_info = CommissionInfo()
+        for row in data.rows:
+            commission_info.update(
+                time=row["INFO_TIME"],
+                sell_volume=int(row["SELL_QTY"]),
+                sell_count=int(row["SELL_ORDER"]),
+                buy_volume=int(row["BUY_QTY"]),
+                buy_count=int(row["BUY_ORDER"])
+            )
+            diff_list += [commission_info.get("Diff")]
+            avg_list += [commission_info.get("AVG")]
+            current_list += [commission_info.get("current")]
+
+        self.assertEqual(diff_list, diff_example)
+        self.assertEqual(avg_list, avg_example)
+        self.assertEqual(current_list, current_example)
 
 # -----------------------------------------------------------------
     def test_(self):
-        filename = os.path.join(self.test_resource_path, "COMMISSION", "Futures_20170815_I030.csv")
-        data = self.data_util.get_data_from_file(filename, 1)
-        print(data.limit(5))
+        pass
 
 
 if __name__ == '__main__':

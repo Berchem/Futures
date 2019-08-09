@@ -73,7 +73,7 @@ class _TechnicalIndicators(ABC):
         pass
 
     @abc.abstractmethod
-    def get(self):
+    def get(self, *args):
         pass
 
 
@@ -390,7 +390,7 @@ class SimpleSellBuyVolume(_Continuous):
 
 class SellBuy(_Continuous):
     def __init__(self):
-        self.__time = None
+        _Continuous.__init__(self)
         self.__price = None
         self.__value = None
         self.__sell_price_1 = None
@@ -403,8 +403,11 @@ class SellBuy(_Continuous):
     def update(self, time, price, up1, down1, volume):
         timestamp = time_to_num(time)
 
-        self.__initialize_time(time)
-        self.__is_out_of_order(timestamp)
+        # initialized attributes
+        self._initialize_time(time)
+
+        # throw exception
+        self._is_out_of_order(timestamp)
 
         self.__price = price
         self.__sell_price_1 = down1
@@ -419,16 +422,16 @@ class SellBuy(_Continuous):
             self.__buy_value += self.__value
             self.__buy_count += 1
 
-        self.__time = time
+        self._time = time
 
     def __get_volume(self):
-        return self.__time, self.__buy_value, self.__sell_value
+        return self._time, self.__buy_value, self.__sell_value
 
     def __get_ratio(self):
-        return self.__time, self.__buy_value / float(self.__sell_value + self.__buy_value)
+        return self._time, self.__buy_value / float(self.__sell_value + self.__buy_value)
 
     def __get_count(self):
-        return self.__time, self.__buy_count, self.__sell_count
+        return self._time, self.__buy_count, self.__sell_count
 
     def get(self, info):
         key = info.lower()
@@ -445,65 +448,79 @@ class SellBuy(_Continuous):
             raise Exception("given key: volume, count or ratio. ")
 
 
-class OrderInfo(_Continuous):
+class CommissionInfo(_Continuous):
     def __init__(self):
-        self.__time = None
+        _Continuous.__init__(self)
+        # sell
         self.__sell_volume_latest = None
         self.__sell_volume = None
         self.__sell_count = None
+
+        # buy
         self.__buy_volume_latest = None
         self.__buy_volume = None
         self.__buy_count = None
 
+        # current
         self.__diff_sell_volume = None
         self.__diff_buy_volume = None
+
+        # diff volume of buy - sell
         self.__diff_order = None
+
+        # average
         self.__avg_sell = None
         self.__avg_buy = None
+
+    def _initialize_latest_sell_vol(self, sell_volume):
+        if self.__sell_volume_latest is None:
+            self.__sell_volume_latest = float(sell_volume)
+
+    def _initialize_latest_buy_vol(self, buy_volume):
+        if self.__buy_volume_latest is None:
+            self.__buy_volume_latest = float(buy_volume)
 
     def update(self, time, sell_volume, sell_count, buy_volume, buy_count):
         timestamp = time_to_num(time)
 
-        if self.__time is None:
-            self.__time = time
+        # initialized attributes
+        self._initialize_time(time)
+        self._initialize_latest_sell_vol(sell_volume)
+        self._initialize_latest_buy_vol(buy_volume)
 
-        if self.__diff_sell_volume is None:
-            self.__sell_volume_latest = float(sell_volume)
-
-        if self.__buy_volume_latest is None:
-            self.__buy_volume_latest = float(buy_volume)
-
-        if timestamp < time_to_num(self.__time):
-            raise Exception("timestamp is out of order")
+        # throw exception
+        self._is_out_of_order(timestamp)
 
         # ===== raw info =====
-        self.__time = time
+        self._time = time
         self.__sell_volume = float(sell_volume)
         self.__sell_count = float(sell_count)
         self.__buy_volume = float(buy_volume)
         self.__buy_count = float(buy_count)
+
         # ==== indicators ====
         # difference of volume: buy - sell
         self.__diff_order = self.__buy_volume - self.__sell_volume
-        # cumulative average volume: volume / count
+        # cumulative average volume: <action> volume / count
         self.__avg_sell = self.__sell_volume / self.__sell_count
         self.__avg_buy = self.__buy_volume / self.__buy_count
         # current difference
         self.__diff_sell_volume = self.__sell_volume - self.__sell_volume_latest
         self.__diff_buy_volume = self.__buy_volume - self.__buy_volume_latest
+        # update
         self.__sell_volume_latest = self.__sell_volume
         self.__buy_volume_latest = self.__buy_volume
 
     def get(self, info):
         key = info.lower()
         if key == "diff":
-            return self.__time, self.__diff_order
+            return self._time, self.__diff_order
 
         elif key == "avg":
-            return self.__time, self.__avg_sell, self.__avg_buy
+            return self._time, self.__avg_sell, self.__avg_buy
 
         elif key == "current":
-            return self.__time, self.__sell_volume_latest, self.__buy_volume_latest
+            return self._time, self.__diff_sell_volume, self.__diff_buy_volume
 
         else:
             raise Exception("given key: volume, count or ratio. ")
