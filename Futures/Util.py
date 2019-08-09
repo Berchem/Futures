@@ -83,6 +83,7 @@ class _Batched(_TechnicalIndicators, ABC):
         :param initial_time: <str>, start time, e.g., "08450000"
         :param period      : <int>, period for updating sequence, e.g., 6000 for 1 minute
         """
+        super().__init__()
         self._time = initial_time
         self._timestamp = time_to_num(initial_time)
         self._period = period
