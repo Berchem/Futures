@@ -307,8 +307,7 @@ class UtilTest(unittest.TestCase):
         self.assertRaises(Exception, sell_buy_obj.update, data.rows[0]["INFO_TIME"], 1, 1)
 
 # -----------------------------------------------------------------
-    # TODO: see also 56-1, 56-2, 57
-    def test_SellBuy(self):
+    def test_SellBuy(self): # TODO: see also 56-1, 56-2, 57
         match = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
         updn = os.path.join(self.test_resource_path, "UpDn5", "Futures_20170815_I080.csv")
 
@@ -382,8 +381,55 @@ class UtilTest(unittest.TestCase):
         self.assertEqual(current_list, current_example)
 
 # -----------------------------------------------------------------
+    def weighted_avg_prices(self, filename):
+        data = self.data_util.get_data_from_file(filename, 1)
+        results = []
+        for row in data.rows:
+            totalUpPrice = 0
+            totalUpQty = 0
+            totalDnPrice = 0
+            totalDnQty = 0
+            for j in range(1, 6):
+                totalDnPrice += int(row["BUY_PRICE%d" % j]) * int(row["BUY_QTY%d" % j])
+                totalDnQty += int(row["BUY_QTY%d" % j])
+                totalUpPrice += int(row["SELL_PRICE%d" % j]) * int(row["SELL_QTY%d" % j])
+                totalUpQty += int(row["SELL_QTY%d" % j])
+            results += [(row["INFO_TIME"], float(totalUpPrice) / totalUpQty, float(totalDnPrice) / totalDnQty)]
+        return results
+
+    def test_WeightedAveragePrice(self):
+        updn = os.path.join(self.test_resource_path, "UpDn5", "Futures_20170815_I080.csv")
+        updn_table = self.data_util.get_data_from_file(updn, 1)
+
+        # actual
+        avg_price_example = self.weighted_avg_prices(updn)
+
+        # expect
+        avg_price_list = []
+        weighted_avg_price = WeightedAveragePrice()
+        cols = updn_table.columns
+        sell_cols = [col for col in cols if "SELL" in col]
+        buy_cols = [col for col in cols if "BUY" in col]
+        for row in updn_table.rows:
+            sell_prices = map(lambda col: float(row[col]), filter(lambda col: "PRICE" in col, sell_cols))
+            sell_volumes = map(lambda col: float(row[col]), filter(lambda col: "QTY" in col, sell_cols))
+            buy_prices = map(lambda col: float(row[col]), filter(lambda col: "PRICE" in col, buy_cols))
+            buy_volumes = map(lambda col: float(row[col]), filter(lambda col: "QTY" in col, buy_cols))
+
+            weighted_avg_price.update(
+                time=row["INFO_TIME"],
+                sell_pairs=list(zip(sell_prices, sell_volumes)),
+                buy_pairs=list(zip(buy_prices, buy_volumes))
+            )
+            avg_price_list += [weighted_avg_price.get()]
+
+        self.assertEqual(avg_price_list, avg_price_example)
+
+# -----------------------------------------------------------------
     def test_(self):
-        pass
+        filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
+        data = self.data_util.get_data_from_file(filename, 1)
+        print(data.limit(3))
 
 
 if __name__ == '__main__':

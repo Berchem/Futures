@@ -524,3 +524,31 @@ class CommissionInfo(_Continuous):
 
         else:
             raise Exception("given key: volume, count or ratio. ")
+
+
+class WeightedAveragePrice(_Continuous):
+    def __init__(self):
+        _Continuous.__init__(self)
+        self.__avg_sell_price = None
+        self.__avg_buy_price = None
+
+    def update(self, time, sell_pairs, buy_pairs):
+        timestamp = time_to_num(time)
+
+        # initialized attributes
+        self._initialize_time(time)
+
+        # throws exception
+        self._is_out_of_order(timestamp)
+
+        # updating
+        self._time = time
+        self.__avg_sell_price = sum(_[0] * _[1] for _ in sell_pairs) / sum(_[1] for _ in sell_pairs)
+        self.__avg_buy_price = sum(_[0] * _[1] for _ in buy_pairs) / sum(_[1] for _ in buy_pairs)
+
+    def get(self):
+        return self._time, self.__avg_sell_price, self.__avg_buy_price
+
+
+class Something:
+    pass
