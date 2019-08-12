@@ -23,7 +23,7 @@ class UtilTest(unittest.TestCase):
 
 # -----------------------------------------------------------------
     @staticmethod
-    def ma_example(filename):
+    def ma_example(filename, period, interval):
         # 24.py
         I020 = [line.strip('\n').split(",") for line in open(filename)]
         index_time = I020[0].index("INFO_TIME")
@@ -32,8 +32,8 @@ class UtilTest(unittest.TestCase):
         MAarray = []
         MA = []
         STime = time_to_num('08450000')
-        Cycle = 6000
-        MAlen = 5
+        Cycle = period
+        MAlen = interval
 
         for i in I020:
             time = i[index_time]
@@ -55,10 +55,12 @@ class UtilTest(unittest.TestCase):
 
     def test_MovingAverage(self):
         filename = os.path.join(self.test_resource_path, 'MATCH', 'Futures_20170815_I020.csv')
+        period = 10
+        interval = 5
         # actual
-        ma_list_example = self.ma_example(filename)
+        ma_list_example = self.ma_example(filename, period, interval)
         # expect
-        ma_obj = MovingAverage("8450000", 6000, 5)
+        ma_obj = MovingAverage("8450000", period, interval)
         data = self.data_util.get_data_from_file(filename, True)
         ma_list = []
         for row in data.rows:
@@ -67,6 +69,10 @@ class UtilTest(unittest.TestCase):
         # assertion
         self.assertEqual(ma_list, ma_list_example)
         self.assertRaises(Exception, ma_obj.update, "123", 456)
+
+        for i in range(100):
+            print(ma_list_example[i])
+
 
 # -----------------------------------------------------------------
     @staticmethod
