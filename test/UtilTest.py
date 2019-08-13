@@ -23,7 +23,7 @@ class UtilTest(unittest.TestCase):
 
 # -----------------------------------------------------------------
     @staticmethod
-    def ma_example(filename, period, interval):
+    def ma_price_example(filename, period, interval):
         # 24.py
         I020 = [line.strip('\n').split(",") for line in open(filename)]
         index_time = I020[0].index("INFO_TIME")
@@ -53,26 +53,71 @@ class UtilTest(unittest.TestCase):
             MA.extend([(time, MAValue)])
         return MA
 
+    @staticmethod
+    def ma_volume_example(filename):
+        i020 = [line.strip('\n').split(",") for line in open(filename)]
+        index_time = i020[0].index("INFO_TIME")
+        index_volume = i020[0].index("AMOUNT")
+        i020 = i020[1:]
+        qty = []
+        q_ma = 0
+        ma_num = 5
+        last_time = ""
+        last_volume = 0
+        result = []
+
+        for i in i020:
+            info_time = i[index_time].zfill(8)
+            time = info_time[0:2] + info_time[2:4]
+            volume = int(i[index_volume])
+
+            if len(qty) == 0:
+                qty += [0]
+                last_time = time
+                last_volume = volume
+
+            else:
+                if time == last_time:
+                    qty[-1] = volume - last_volume
+
+                else:
+                    if len(qty) == ma_num:
+                        # print(time, qty, q_ma, "WTF")
+                        qty = qty[1:] + [0]
+
+                    else:
+                        qty += [0]
+
+                    last_time = time
+                    last_volume = volume
+            q_ma = sum(qty) / len(qty)
+            result.extend([(i[index_time], q_ma)])
+        return result
+
     def test_MovingAverage(self):
         filename = os.path.join(self.test_resource_path, 'MATCH', 'Futures_20170815_I020.csv')
-        period = 10
-        interval = 5
+        period = 6000
+        interval = 3
         # actual
-        ma_list_example = self.ma_example(filename, period, interval)
+        ma_price_example = self.ma_price_example(filename, period, interval)
+        ma_volume_example = self.ma_volume_example(filename)
         # expect
         ma_obj = MovingAverage("8450000", period, interval)
         data = self.data_util.get_data_from_file(filename, True)
-        ma_list = []
+        ma_price_list = []
+        ma_volume_list = []
         for row in data.rows:
-            ma_obj.update(row["INFO_TIME"], int(row["PRICE"]))
-            ma_list.extend([ma_obj.get()])
+            ma_obj.update(row["INFO_TIME"], int(row["PRICE"]), int(row["AMOUNT"]))
+            ma_price_list.extend([ma_obj.get("price")])
+            ma_volume_list.extend([ma_obj.get("volume")])
+
         # assertion
-        self.assertEqual(ma_list, ma_list_example)
+        self.assertEqual(ma_price_list, ma_price_example)
+        # self.assertEqual(ma_volume_list, ma_volume_example)
         self.assertRaises(Exception, ma_obj.update, "123", 456)
 
-        for i in range(100):
-            print(ma_list_example[i])
-
+        for i in range(5):
+            print(ma_volume_list[i])
 
 # -----------------------------------------------------------------
     @staticmethod
