@@ -104,48 +104,64 @@ class MovingAverage(_Batched):
         """
         _Batched.__init__(self, initial_time, period)
         self.__interval = interval
-        self.__ma_value = None
-        self.__ma_array = []
-        self.__time_array = []
+        # price
+        self.__ma_price_array = []
+        self.__ma_price_value = None
+        # volume
+        self.__latest_volume = 0
+        self.__ma_volume_array = []
+        self.__ma_volume_value = None
 
-    def update(self, time, price):
+    def update(self, time, price, volume):
         """
-        :param  time: <str> info_time
-        :param price: <int> or <float> price
+        :param   time: <str> info_time
+        :param  price: <int> or <float> price
+        :param volume: <int> or <float> volume (or amount)
         :return: void
         """
         timestamp = time_to_num(time)
 
-        if len(self.__ma_array) == 0:
-            self.__ma_array.append(price)
-            self.__time_array.append(time)
+        # initialized attributes
+        if len(self.__ma_price_array) == 0:
+            self.__latest_volume = volume
+            self.__ma_volume_array.append(volume - self.__latest_volume)
+            self.__ma_price_array.append(price)
 
         # throw exception
         self._is_out_of_order(timestamp)
 
         # updating
         if timestamp < self._timestamp + self._period:
-            self.__ma_array[-1] = price
-            self.__time_array[-1] = time
+            self.__ma_price_array[-1] = price
+            self.__ma_volume_array[-1] = volume - self.__latest_volume
 
         else:
             self._timestamp += self._period
+            self.__latest_volume = volume
 
-            if len(self.__ma_array) == self.__interval:
-                self.__ma_array = self.__ma_array[1:] + [price]
-                self.__time_array = self.__time_array[1:] + [time]
+            if len(self.__ma_price_array) == self.__interval:
+                self.__ma_price_array = self.__ma_price_array[1:] + [price]
+                self.__ma_volume_array = self.__ma_volume_array[1:] + [0]
 
             else:
-                self.__ma_array.append(price)
-                self.__time_array.append(time)
+                self.__ma_price_array.append(price)
+                self.__ma_volume_array.append(0)
 
-        self.__ma_value = float(sum(self.__ma_array)) / len(self.__ma_array)
+        self._time = time
+        self.__ma_price_value = float(sum(self.__ma_price_array)) / len(self.__ma_price_array)
+        self.__ma_volume_value = float(sum(self.__ma_volume_array)) / len(self.__ma_volume_array)
 
-    def get(self):
+    def get(self, info):
         """
+        :param info: <string> price or volume
         :return: (str raw_time, float ma_value)
         """
-        return self.__time_array[-1], self.__ma_value
+        key = info.lower()
+        if key == "price":
+            return self._time, self.__ma_price_value
+
+        elif key == "volume":
+            return self._time, self.__ma_volume_array
 
 
 class OpenHighLowClose(_Batched):
