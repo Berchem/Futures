@@ -217,6 +217,43 @@ class UtilTest(unittest.TestCase):
         close_price_list = [row["close"] for row in ohlc_group.rows]
         self.assertEqual(close_price_list, close_price_example)
 
+    @staticmethod
+    def ohlc_by_ticks(filename):
+        i020 = [i.strip("\n").split(",") for i in open(filename)]
+        index_time = i020[0].index("INFO_TIME")
+        index_price = i020[0].index("PRICE")
+        i020 = i020[1:]
+        TickMA200 = []
+        TickOHLC = []
+        for MatchInfo in i020:
+            MatchTime = MatchInfo[index_time].zfill(8)
+            MatchPrice = int(MatchInfo[index_price])
+
+            # 將Tick相加
+            TickMA200 += [MatchPrice]
+
+            # 當tick200筆時，進行開高低收統計
+            if len(TickMA200) == 200:
+                TickOHLC += [[MatchTime, TickMA200[0], max(TickMA200), min(TickMA200), TickMA200[-1]]]
+                TickMA200 = []
+        return TickOHLC
+
+    def test_OpenHighLowClose_by_ticks(self):
+        filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
+        # actual
+        ohlc_ticks_example = self.ohlc_by_ticks(filename)
+        # expect
+        data = self.data_util.get_data_from_file(filename, 1)
+        ohlc_obj = OpenHighLowClose.ticks(200)
+        ohlc_list = []
+        for row in data.rows:
+            ohlc_obj.update(row["INFO_TIME"], int(row["PRICE"]))
+            ohlc_list += [list(ohlc_obj.get())]
+
+        print(ohlc_list[199:1000:200])
+        print(ohlc_ticks_example[:5])
+
+
 # -----------------------------------------------------------------
     @staticmethod
     def volume_count_per_min(filename):
