@@ -54,14 +54,12 @@ class UtilTest(unittest.TestCase):
         return MA
 
     @staticmethod
-    def ma_volume_example(filename):
+    def ma_volume_example(filename, period, interval):
         i020 = [line.strip('\n').split(",") for line in open(filename)]
         index_time = i020[0].index("INFO_TIME")
         index_volume = i020[0].index("AMOUNT")
         i020 = i020[1:]
         qty = []
-        q_ma = 0
-        ma_num = 5
         last_time = ""
         last_volume = 0
         result = []
@@ -81,7 +79,7 @@ class UtilTest(unittest.TestCase):
                     qty[-1] = volume - last_volume
 
                 else:
-                    if len(qty) == ma_num:
+                    if len(qty) == interval:
                         # print(time, qty, q_ma, "WTF")
                         qty = qty[1:] + [0]
 
@@ -100,7 +98,7 @@ class UtilTest(unittest.TestCase):
         interval = 3
         # actual
         ma_price_example = self.ma_price_example(filename, period, interval)
-        ma_volume_example = self.ma_volume_example(filename)
+        ma_volume_example = self.ma_volume_example(filename, period, interval)
         # expect
         ma_obj = MovingAverage("8450000", period, interval)
         data = self.data_util.get_data_from_file(filename, True)
@@ -113,11 +111,8 @@ class UtilTest(unittest.TestCase):
 
         # assertion
         self.assertEqual(ma_price_list, ma_price_example)
-        # self.assertEqual(ma_volume_list, ma_volume_example)
+        self.assertEqual(ma_volume_list, ma_volume_example)
         self.assertRaises(Exception, ma_obj.update, "123", 456)
-
-        for i in range(5):
-            print(ma_volume_list[i])
 
 # -----------------------------------------------------------------
     @staticmethod
@@ -187,6 +182,77 @@ class UtilTest(unittest.TestCase):
         ohlc_list = [[row["time"][:4], row["open"], row["high"], row["low"], row["close"]] for row in ohlc_group.rows]
         # assert
         self.assertEqual(ohlc_list, ohlc_example)
+
+    @staticmethod
+    def close_price_example_64(filename):
+        i020 = [i.strip("\n").split(",") for i in open(filename)]
+        index_time = i020[0].index("INFO_TIME")
+        index_price = i020[0].index("PRICE")
+        i020 = i020[1:]
+
+        close_price = []  # collecting close price every minute
+        last_time = ""
+
+        for match_info in i020:
+            info_time = match_info[index_time].zfill(8)
+            time = info_time[0:2] + info_time[2:4]
+            match_price = int(match_info[index_price])
+
+            if len(close_price) == 0:
+                close_price += [match_price]
+                last_time = time
+            else:
+                if time == last_time:
+                    close_price[-1] = match_price
+                elif time != last_time:
+                    close_price += [match_price]
+                    last_time = time
+
+        return close_price
+
+    def test_close_price(self):
+        filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
+        close_price_example = self.close_price_example_64(filename)
+        ohlc_group = self.generate_ohlc_result(filename, 1, "8450000")
+        close_price_list = [row["close"] for row in ohlc_group.rows]
+        self.assertEqual(close_price_list, close_price_example)
+
+    @staticmethod
+    def ohlc_by_ticks(filename):
+        i020 = [i.strip("\n").split(",") for i in open(filename)]
+        index_time = i020[0].index("INFO_TIME")
+        index_price = i020[0].index("PRICE")
+        i020 = i020[1:]
+        TickMA200 = []
+        TickOHLC = []
+        for MatchInfo in i020:
+            MatchTime = MatchInfo[index_time].zfill(8)
+            MatchPrice = int(MatchInfo[index_price])
+
+            # 將Tick相加
+            TickMA200 += [MatchPrice]
+
+            # 當tick200筆時，進行開高低收統計
+            if len(TickMA200) == 200:
+                TickOHLC += [[MatchTime, TickMA200[0], max(TickMA200), min(TickMA200), TickMA200[-1]]]
+                TickMA200 = []
+        return TickOHLC
+
+    def test_OpenHighLowClose_by_ticks(self):
+        filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
+        # actual
+        ohlc_ticks_example = self.ohlc_by_ticks(filename)
+        # expect
+        data = self.data_util.get_data_from_file(filename, 1)
+        ohlc_obj = OpenHighLowClose.ticks(200)
+        ohlc_list = []
+        for row in data.rows:
+            ohlc_obj.update(row["INFO_TIME"], int(row["PRICE"]))
+            ohlc_list += [list(ohlc_obj.get())]
+
+        print(ohlc_list[199:1000:200])
+        print(ohlc_ticks_example[:5])
+
 
 # -----------------------------------------------------------------
     @staticmethod
