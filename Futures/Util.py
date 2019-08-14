@@ -161,7 +161,7 @@ class MovingAverage(_Batched):
             return self._time, self.__ma_price_value
 
         elif key == "volume":
-            return self._time, self.__ma_volume_array
+            return self._time, self.__ma_volume_value
 
 
 class OpenHighLowClose(_Batched):
