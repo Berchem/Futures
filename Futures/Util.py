@@ -268,8 +268,8 @@ class OpenHighLowClose(_Batched, _Continuous):
         close     : latest price to current timestamp
         :return: (str timestamp , int open, int, high, int low, int close)
         """
-        # time = num_to_time(self._timestamp)
-        return self._time, self.__open, self.__high, self.__low, self.__close
+        time = self._time if self.ticks else num_to_time(self._timestamp)
+        return time, self.__open, self.__high, self.__low, self.__close
 
 
 class VolumeCount(_Batched):

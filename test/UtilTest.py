@@ -179,6 +179,8 @@ class UtilTest(unittest.TestCase):
         ohlc_example = self.generate_ohlc_example_result(filename, period)
         # expect
         ohlc_group = self.generate_ohlc_result(filename, period, "8450000")
+        print(ohlc_group.limit(4))
+        print(ohlc_example[:3])
         ohlc_list = [[row["time"][:4], row["open"], row["high"], row["low"], row["close"]] for row in ohlc_group.rows]
         # assert
         self.assertEqual(ohlc_list, ohlc_example)
@@ -250,9 +252,7 @@ class UtilTest(unittest.TestCase):
             ohlc_obj.update(row["INFO_TIME"], int(row["PRICE"]))
             ohlc_list += [list(ohlc_obj.get())]
 
-        print(ohlc_list[199:1000:200])
-        print(ohlc_ticks_example[:5])
-
+        self.assertEqual(ohlc_list, ohlc_ticks_example)
 
 # -----------------------------------------------------------------
     @staticmethod
