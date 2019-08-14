@@ -164,26 +164,30 @@ class MovingAverage(_Batched):
             return self._time, self.__ma_volume_value
 
 
-class OpenHighLowClose(_Batched):
-    def __init__(self, initial_time, period):
+class OpenHighLowClose(_Batched, _Continuous):
+    def __init__(self, initial_time=None, period=None, ticks=None):
         """
-        :param period      : <int> period for refresh attributes
         :param initial_time: <str> start time, e.g. "08450000"
+        :param period      : <int> period for refresh attributes
+        :param ticks       : <int> number of ticks, e.g. 200
         """
-        _Batched.__init__(self, initial_time, period)
+        if ticks:
+            _Continuous.__init__(self)
+        else:  # by time
+            _Batched.__init__(self, initial_time, period)
+
         self.__open = None
         self.__high = None
         self.__low = None
         self.__close = None
+        self.__ticks = ticks
+        self.__count = 0
 
-    def update(self, time, price):
-        """
-        :param time : <str> info_time
-        :param price: <int> or <float> price
-        :return: void
-        """
-        timestamp = time_to_num(time)
+    @classmethod
+    def ticks(cls, ticks):
+        return cls(ticks=ticks)
 
+    def __initialize_prices(self, price):
         if self.__high is None:
             self.__high = price
 
@@ -196,8 +200,7 @@ class OpenHighLowClose(_Batched):
         if self.__close is None:
             self.__close = price
 
-        self._is_out_of_order(timestamp)
-
+    def __updated_by_time(self, timestamp, price):
         if timestamp < self._timestamp + self._period:
             if price > self.__high:
                 self.__high = price
@@ -214,6 +217,46 @@ class OpenHighLowClose(_Batched):
             self.__close = price
             self._timestamp += self._period
 
+    def __updated_by_tick(self, price):
+        if self.__count < self.__ticks:
+            if price > self.__high:
+                self.__high = price
+
+            if price < self.__low:
+                self.__low = price
+
+            self.__close = price
+            self.__count += 1
+
+        else:
+            self.__open = price
+            self.__high = price
+            self.__low = price
+            self.__close = price
+            self.__count = 1
+
+    def update(self, time, price):
+        """
+        :param time : <str> info_time
+        :param price: <int> or <float> price
+        :return: void
+        """
+        timestamp = time_to_num(time)
+
+        # initialized attributes
+        self._initialize_time(time)
+        self.__initialize_prices(price)
+
+        # throws exception
+        self._is_out_of_order(timestamp)
+
+        # updating
+        if self.__ticks:
+            self.__updated_by_tick(price)
+
+        else:
+            self.__updated_by_time(timestamp, price)
+
         self._time = time
 
     def get(self):
@@ -225,8 +268,8 @@ class OpenHighLowClose(_Batched):
         close     : latest price to current timestamp
         :return: (str timestamp , int open, int, high, int low, int close)
         """
-        time = num_to_time(self._timestamp)
-        return time, self.__open, self.__high, self.__low, self.__close
+        # time = num_to_time(self._timestamp)
+        return self._time, self.__open, self.__high, self.__low, self.__close
 
 
 class VolumeCount(_Batched):
