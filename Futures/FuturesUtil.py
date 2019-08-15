@@ -1,5 +1,5 @@
-from Util import time_to_num
-from Util import num_to_time
+from .Util import time_to_num
+from .Util import num_to_time
 
 
 class FuturesUtil:

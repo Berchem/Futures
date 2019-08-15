@@ -1,5 +1,5 @@
-from Util import read_csv
-from SQLiteUtil import SQLiteUtil
+from .Util import read_csv
+from .SQLiteUtil import SQLiteUtil
 from MypseudoSQL import Table
 
 

@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from Util import read_csv
+from .Util import read_csv
 
 
 class SQLite:

@@ -200,39 +200,36 @@ class OpenHighLowClose(_Batched, _Continuous):
         if self.__close is None:
             self.__close = price
 
+    def __update_cache(self, price):
+        if price > self.__high:
+            self.__high = price
+
+        if price < self.__low:
+            self.__low = price
+
+        self.__close = price
+
+    def __update_new_one(self, price):
+        self.__open = price
+        self.__high = price
+        self.__low = price
+        self.__close = price
+
     def __updated_by_time(self, timestamp, price):
         if timestamp < self._timestamp + self._period:
-            if price > self.__high:
-                self.__high = price
-
-            if price < self.__low:
-                self.__low = price
-
-            self.__close = price
+            self.__update_cache(price)
 
         else:
-            self.__open = price
-            self.__high = price
-            self.__low = price
-            self.__close = price
+            self.__update_new_one(price)
             self._timestamp += self._period
 
     def __updated_by_tick(self, price):
         if self.__count < self.__ticks:
-            if price > self.__high:
-                self.__high = price
-
-            if price < self.__low:
-                self.__low = price
-
-            self.__close = price
+            self.__update_cache(price)
             self.__count += 1
 
         else:
-            self.__open = price
-            self.__high = price
-            self.__low = price
-            self.__close = price
+            self.__update_new_one(price)
             self.__count = 1
 
     def update(self, time, price):
@@ -251,10 +248,10 @@ class OpenHighLowClose(_Batched, _Continuous):
         self._is_out_of_order(timestamp)
 
         # updating
-        if self.__ticks:
+        if self.__ticks:  # <int>
             self.__updated_by_tick(price)
 
-        else:
+        else:  # <NoneType>
             self.__updated_by_time(timestamp, price)
 
         self._time = time
@@ -268,7 +265,7 @@ class OpenHighLowClose(_Batched, _Continuous):
         close     : latest price to current timestamp
         :return: (str timestamp , int open, int, high, int low, int close)
         """
-        time = self._time if self.ticks else num_to_time(self._timestamp)
+        time = self._time if self.__ticks else num_to_time(self._timestamp)
         return time, self.__open, self.__high, self.__low, self.__close
 
 
@@ -609,5 +606,14 @@ class WeightedAveragePrice(_Continuous):
         return self._time, self.__avg_sell_price, self.__avg_buy_price
 
 
-class Something:
-    pass
+class Something(_Continuous):
+    def __init__(self):
+        _Continuous.__init__(self)
+        strategy = 1
+        self.s = strategy
+
+    def update(self, *args):
+        pass
+
+    def get(self, *args):
+        pass
