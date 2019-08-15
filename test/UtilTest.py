@@ -5,10 +5,12 @@ from Futures.Util import *
 from Futures.DataUtil import DataUtil
 from MypseudoSQL import Table
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 
 class UtilTest(unittest.TestCase):
     data_util = DataUtil()
-    test_resource_path = "../test_resources/futures_data_sample"
+    test_resource_path = os.path.join(BASE_DIR, "test_resources", "futures_data_sample")
 
     def test_time_to_num(self):
         self.assertEqual(time_to_num("8450830"), 3150830)
@@ -179,8 +181,6 @@ class UtilTest(unittest.TestCase):
         ohlc_example = self.generate_ohlc_example_result(filename, period)
         # expect
         ohlc_group = self.generate_ohlc_result(filename, period, "8450000")
-        print(ohlc_group.limit(4))
-        print(ohlc_example[:3])
         ohlc_list = [[row["time"][:4], row["open"], row["high"], row["low"], row["close"]] for row in ohlc_group.rows]
         # assert
         self.assertEqual(ohlc_list, ohlc_example)
@@ -236,7 +236,7 @@ class UtilTest(unittest.TestCase):
 
             # 當tick200筆時，進行開高低收統計
             if len(TickMA200) == 200:
-                TickOHLC += [[MatchTime, TickMA200[0], max(TickMA200), min(TickMA200), TickMA200[-1]]]
+                TickOHLC += [[MatchInfo[index_time], TickMA200[0], max(TickMA200), min(TickMA200), TickMA200[-1]]]
                 TickMA200 = []
         return TickOHLC
 
@@ -252,7 +252,7 @@ class UtilTest(unittest.TestCase):
             ohlc_obj.update(row["INFO_TIME"], int(row["PRICE"]))
             ohlc_list += [list(ohlc_obj.get())]
 
-        self.assertEqual(ohlc_list, ohlc_ticks_example)
+        self.assertEqual(ohlc_list[199:len(ohlc_list):200], ohlc_ticks_example)
 
 # -----------------------------------------------------------------
     @staticmethod
@@ -431,9 +431,6 @@ class UtilTest(unittest.TestCase):
         match_table = self.data_util.get_data_from_file(match, 1)
         updn_table = self.data_util.get_data_from_file(updn, 1)
 
-        print(match_table.select(["INFO_TIME", "PRICE", "QTY"]).limit(1))
-        print(updn_table.limit(1))
-
 # -----------------------------------------------------------------
     def diff_commission_volume(self, filename):
         data = self.data_util.get_data_from_file(filename, 1)
@@ -543,10 +540,40 @@ class UtilTest(unittest.TestCase):
         self.assertEqual(avg_price_list, avg_price_example)
 
 # -----------------------------------------------------------------
-    def test_(self):
+    def un_test_DaWho(self):
         filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
         data = self.data_util.get_data_from_file(filename, 1)
-        print(data.limit(3))
+
+        last_buy_cnt = 0
+        last_sell_cnt = 0
+        acc_buy = 0
+        acc_sell = 0
+
+        for row in data.rows:
+            match_time = row["INFO_TIME"]
+            match_price = int(row["PRICE"])
+            match_qty = int(row["QTY"])
+            match_buy_cnt = int(row["MATCH_BUY_CNT"])
+            match_sell_cnt = int(row["MATCH_SELL_CNT"])
+
+            if last_buy_cnt == 0 and last_sell_cnt == 0:
+                last_buy_cnt = match_buy_cnt
+                last_sell_cnt = match_sell_cnt
+
+            else:
+                diff_buy_cnt = match_buy_cnt - last_buy_cnt
+                diff_sell_cnt = match_sell_cnt - last_sell_cnt
+                if match_qty >= 10:
+                    if diff_buy_cnt == 1 and diff_sell_cnt > 1:
+                        acc_buy += match_qty
+                        print(match_time, match_price, match_qty, 0, acc_buy, acc_sell)
+
+                    elif diff_sell_cnt == 1 and diff_buy_cnt > 1:
+                        acc_sell += match_qty
+                        print(match_time, match_price, 0, match_qty, acc_buy, acc_sell)
+
+            last_buy_cnt = match_buy_cnt
+            last_sell_cnt = match_sell_cnt
 
 
 if __name__ == '__main__':
