@@ -606,14 +606,39 @@ class WeightedAveragePrice(_Continuous):
         return self._time, self.__avg_sell_price, self.__avg_buy_price
 
 
-class Something(_Continuous):
+class (_Continuous):
     def __init__(self):
         _Continuous.__init__(self)
-        strategy = 1
-        self.s = strategy
+        self.price = 0
+        self.last_buy_cnt = 0
+        self.last_sell_cnt = 0
+        self.acc_buy = 0
+        self.acc_sell = 0
 
-    def update(self, *args):
-        pass
+    def update(self, time, price, current_volume, sell_count, buy_count):
+        timestamp = time_to_num(time)
+        self._initialize_time(time)
+        if self.last_buy_cnt == 0 and self.last_sell_cnt == 0:
+            self.last_buy_cnt = buy_count
+            self.last_sell_cnt = sell_count
+
+        self._is_out_of_order(timestamp)
+
+        diff_buy_cnt = buy_count - self.last_buy_cnt
+        diff_sell_cnt = sell_count - self.last_sell_cnt
+        if current_volume >= 10:
+            if diff_buy_cnt == 1 and diff_sell_cnt > 1:
+                self.acc_buy += current_volume
+                # print(match_time, match_price, match_qty, 0, acc_buy, acc_sell)
+
+            elif diff_sell_cnt == 1 and diff_buy_cnt > 1:
+                self.acc_sell += current_volume
+                # print(match_time, match_price, 0, match_qty, acc_buy, acc_sell)
+
+        self.last_buy_cnt = buy_count
+        self.last_sell_cnt = sell_count
+        self._time = time
+        self.price = price
 
     def get(self, *args):
-        pass
+        return self._time, self.price, self.last_sell_cnt

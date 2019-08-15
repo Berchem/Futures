@@ -540,7 +540,7 @@ class UtilTest(unittest.TestCase):
         self.assertEqual(avg_price_list, avg_price_example)
 
 # -----------------------------------------------------------------
-    def un_test_DaWho(self):
+    def test_DaWho(self):
         filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
         data = self.data_util.get_data_from_file(filename, 1)
 
