@@ -606,7 +606,7 @@ class WeightedAveragePrice(_Continuous):
         return self._time, self.__avg_sell_price, self.__avg_buy_price
 
 
-class (_Continuous):
+class InstitutionalPosition(_Continuous):
     def __init__(self):
         _Continuous.__init__(self)
         self.price = 0
