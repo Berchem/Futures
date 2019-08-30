@@ -97,24 +97,38 @@ class UtilTest(unittest.TestCase):
     def test_MovingAverage(self):
         filename = os.path.join(self.test_resource_path, 'MATCH', 'Futures_20170815_I020.csv')
         period = 6000
-        interval = 3
+        interval = 5
         # actual
         ma_price_example = self.ma_price_example(filename, period, interval)
         ma_volume_example = self.ma_volume_example(filename, period, interval)
         # expect
-        ma_obj = MovingAverage("8450000", period, interval)
+        # ma_obj = MovingAverage("8450000", period, interval)
+        initial_time = dt.datetime(2017, 8, 15, 8, 45, 0, 0)
+        period = dt.timedelta(minutes=1)
+        ma_obj = MovingAverage(initial_time, period, interval)
         data = self.data_util.get_data_from_file(filename, True)
         ma_price_list = []
         ma_volume_list = []
         for row in data.rows:
-            ma_obj.update(row["INFO_TIME"], int(row["PRICE"]), int(row["AMOUNT"]))
-            ma_price_list.extend([ma_obj.get("price")])
-            ma_volume_list.extend([ma_obj.get("volume")])
+            info_time = row["INFO_TIME"].zfill(8)
+            info_time = dt.datetime(
+                2017, 8, 15,
+                int(info_time[:2]),
+                int(info_time[2:4]),
+                int(info_time[4:6]),
+                int(info_time[6:]) * 10000,
+            )
+            ma_obj.update(info_time, int(row["PRICE"]), int(row["AMOUNT"]))
+            time, price = ma_obj.get("price")
+            _, volume = ma_obj.get("volume")
+            time = time.strftime("%H%M%S%f").lstrip("0")[:-4]
+            ma_price_list.extend([(time, price)])
+            ma_volume_list.extend([(time, volume)])
 
         # assertion
         self.assertEqual(ma_price_list, ma_price_example)
         self.assertEqual(ma_volume_list, ma_volume_example)
-        self.assertRaises(Exception, ma_obj.update, "123", 456)
+        self.assertRaises(Exception, ma_obj.update, initial_time, 456, 789)
 
 # -----------------------------------------------------------------
     @staticmethod
@@ -158,11 +172,21 @@ class UtilTest(unittest.TestCase):
 
     def generate_ohlc_result(self, filename, period, initial_time):
         data = self.data_util.get_data_from_file(filename, 1)
-        ohlc_obj = OpenHighLowClose(initial_time, period * 6000)
+        ohlc_obj = OpenHighLowClose(initial_time, period)
         ohlc_table = Table(["time", "open", "high", "low", "close"])
         for row in data.rows:
-            ohlc_obj.update(row["INFO_TIME"], int(row["PRICE"]))
-            ohlc_table.insert(ohlc_obj.get())
+            info_time = row["INFO_TIME"].zfill(8)
+            info_time = dt.datetime(
+                2017, 8, 15,
+                int(info_time[:2]),
+                int(info_time[2:4]),
+                int(info_time[4:6]),
+                int(info_time[6:]) * 10000,
+            )
+            ohlc_obj.update(info_time, int(row["PRICE"]))
+            time, o, h, l, c = ohlc_obj.get()
+            time = time.strftime("%H%M%S%f")[:-4]
+            ohlc_table.insert([time, o, h, l, c])
         ohlc_group = ohlc_table.group_by(
             group_by_columns=["time"],
             aggregates={
@@ -180,7 +204,9 @@ class UtilTest(unittest.TestCase):
         # actual
         ohlc_example = self.generate_ohlc_example_result(filename, period)
         # expect
-        ohlc_group = self.generate_ohlc_result(filename, period, "8450000")
+        initial_time = dt.datetime(2017, 8, 15, 8, 45, 0, 0)
+        period = dt.timedelta(minutes=period)
+        ohlc_group = self.generate_ohlc_result(filename, period, initial_time)
         ohlc_list = [[row["time"][:4], row["open"], row["high"], row["low"], row["close"]] for row in ohlc_group.rows]
         # assert
         self.assertEqual(ohlc_list, ohlc_example)
@@ -215,7 +241,9 @@ class UtilTest(unittest.TestCase):
     def test_close_price(self):
         filename = os.path.join(self.test_resource_path, "MATCH", "Futures_20170815_I020.csv")
         close_price_example = self.close_price_example_64(filename)
-        ohlc_group = self.generate_ohlc_result(filename, 1, "8450000")
+        initial_time = dt.datetime(2017, 8, 15, 8, 45, 0, 0)
+        period = dt.timedelta(minutes=1)
+        ohlc_group = self.generate_ohlc_result(filename, period, initial_time)
         close_price_list = [row["close"] for row in ohlc_group.rows]
         self.assertEqual(close_price_list, close_price_example)
 
@@ -249,8 +277,18 @@ class UtilTest(unittest.TestCase):
         ohlc_obj = OpenHighLowClose.ticks(200)
         ohlc_list = []
         for row in data.rows:
-            ohlc_obj.update(row["INFO_TIME"], int(row["PRICE"]))
-            ohlc_list += [list(ohlc_obj.get())]
+            info_time = row["INFO_TIME"].zfill(8)
+            info_time = dt.datetime(
+                2017, 8, 15,
+                int(info_time[:2]),
+                int(info_time[2:4]),
+                int(info_time[4:6]),
+                int(info_time[6:]) * 10000,
+            )
+            ohlc_obj.update(info_time, int(row["PRICE"]))
+            time, o, h, l, c = ohlc_obj.get()
+            time = time.strftime("%H%M%S%f").lstrip("0")[:-4]
+            ohlc_list += [[time, o, h, l, c]]
 
         self.assertEqual(ohlc_list[199:len(ohlc_list):200], ohlc_ticks_example)
 
