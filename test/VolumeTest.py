@@ -7,11 +7,8 @@ from HModel.Volume import *
 import os
 import datetime as dt
 
-conf = Config("test-conf.ini")
-
-BASE_DIR = conf.prop.get("VOLUME", "BASE_DIR")
-RESOURCE_DIR = conf.prop.get("VOLUME", "RESOURCE_DIR")
-filename = os.path.join(BASE_DIR, RESOURCE_DIR, "history_data_for_h_model.csv")
+conf = Config("../test_resources/conf/test-conf.ini")
+filename = conf.prop.get("VOLUME", "RESOURCE_FILENAME")
 print(type(conf.prop.get("VOLUME", "INTERVAL")))
 data_util = DataUtil()
 data = data_util.get_data_from_file(filename, 1)
@@ -41,20 +38,10 @@ print("isClose in tw:", ClosingDates(dt.date(1998, 9, 16), "fri", 3).is_closing(
 ma_index = MovingAverage(dt.datetime(1998, 9, 1), dt.timedelta(days=1), 60)
 
 
-def _calc(row):
-    time = dt.datetime.strptime(row["Date"], "%Y/%m/%d")
-    price = float(row["WeightedIndex"])
-    ma_index.update(time, price, price)
-    _, ma_value = ma_index.get("price")
-    return ma_value
-
-
-data_1 = data.select(additional_columns={"avg_index": _calc})
-data_1.rows = data_1.rows[::-1]
-
-print(data_1.limit(5))
 
 vi = WeightedIndex(conf)
-vi._load_data()
-vi._calc_ma()
-print(vi._data)
+vi._calc_volume_indicator()
+print(sum(row["volume_indicator"] for row in vi._data.rows[59:]))
+print(vi._data.rows[59])
+vi.calc_delta()
+print(vi.get().rows[59:65])
