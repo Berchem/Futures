@@ -15,11 +15,13 @@ class _VolumeIndicator(ABC):
         self._conf = conf
         self._CLOSING_DAY = conf.prop.get("VOLUME", "CLOSING_DAY")
         self._CLOSING_WEEK = int(conf.prop.get("VOLUME", "CLOSING_WEEK"))
-        self._COLUMN_IS_CLOSING_DATE = conf.prop.get("VOLUME", "COLUMN_IS_CLOSING_DATE")
+        self._LEVERAGE = float(conf.prop.get("VOLUME", "LEVERAGE"))
+        self._INITIAL_RESERVE = float(conf.prop.get("VOLUME", "INITIAL_RESERVE"))
         self._INTERVAL = int(conf.prop.get("VOLUME", "INTERVAL"))
         self._DATA_RESOURCE = conf.prop.get("VOLUME", "DATA_RESOURCE")
-        self._COLUMN_DATE = conf.prop.get("VOLUME", "COLUMN_DATE")
         self._DATE_FORMAT = conf.prop.get("VOLUME", "DATE_FORMAT")
+        self._COLUMN_IS_CLOSING_DATE = conf.prop.get("VOLUME", "COLUMN_IS_CLOSING_DATE")
+        self._COLUMN_DATE = conf.prop.get("VOLUME", "COLUMN_DATE")
         self._COLUMN_INDEX = conf.prop.get("VOLUME", "COLUMN_INDEX")
         self._COLUMN_VOLUME = conf.prop.get("VOLUME", "COLUMN_VOLUME")
         self._COLUMN_PRICE_CURRENT = conf.prop.get("VOLUME", "COLUMN_PRICE_CURRENT")
@@ -27,7 +29,9 @@ class _VolumeIndicator(ABC):
         self._COLUMN_AVG_INDEX = conf.prop.get("VOLUME", "COLUMN_AVG_INDEX")
         self._COLUMN_AVG_VOLUME = conf.prop.get("VOLUME", "COLUMN_AVG_VOLUME")
         self._COLUMN_VOLUME_INDICATOR = conf.prop.get("VOLUME", "COLUMN_VOLUME_INDICATOR")
-        self._COLUMN_VOLUME_INDICATOR = conf.prop.get("VOLUME", "COLUMN_VOLUME_INDICATOR")
+        self._COLUMN_RESERVE = conf.prop.get("VOLUME", "COLUMN_RESERVE")
+        self._COLUMN_OPEN_CONTRACT = conf.prop.get("VOLUME", "COLUMN_OPEN_CONTRACT")
+        self._COLUMN_TRADED_CONTRACT = conf.prop.get("VOLUME", "COLUMN_TRADED_CONTRACT")
 
         self._reserve = 0
         self._open_contract = 0
@@ -133,14 +137,22 @@ class _VolumeIndicator(ABC):
             delta_of_target = row["delta_of_{}".format(self._target)]
             row[column_name] = volume_indicator * delta_of_target
 
-    def _calc_open_contract(self):
+    def _calc_open_contract(self, row):
+        reserve = self._reserve
+        target = float(row[self._target])
+        volume_indicator = row[self._COLUMN_VOLUME_INDICATOR]
+        self._open_contract = int(reserve * self._LEVERAGE / target) * volume_indicator
+        return self._open_contract
+
+    def _calc_traded_contract(self, row):
         pass
 
-    def _calc_traded_contract(self):
-        pass
-
-    def _calc_reserve(self):
-        pass
+    def _calc_reserve(self, row):
+        reserve = self._INITIAL_RESERVE if self._reserve == 0 else self._reserve
+        delta_of_target = row["delta_of_{}".format(self._target)]
+        open_contract = self._open_contract
+        self._reserve = reserve + delta_of_target * open_contract
+        return self._reserve
 
     @abc.abstractmethod
     def get(self):
@@ -181,13 +193,10 @@ class FuturesPrice(_VolumeIndicator):
                 row[column_name] = 0
 
             else:
-                if row[self._COLUMN_IS_CLOSING_DATE]:
-                    row[column_name] = float(row[self._COLUMN_PRICE_CURRENT]) -\
-                                       float(self._data.rows[i-1][self._COLUMN_PRICE_NEXT])
-
-                else:
-                    row[column_name] = float(row[self._COLUMN_PRICE_CURRENT]) -\
-                                       float(self._data.rows[i-1][self._COLUMN_PRICE_CURRENT])
+                previous = self._data.rows[-1]
+                is_close = previous[self._COLUMN_IS_CLOSING_DATE]
+                previous_price = previous[self._COLUMN_PRICE_NEXT] if is_close else previous[self._COLUMN_PRICE_CURRENT]
+                row[column_name] = float(row[self._COLUMN_PRICE_CURRENT]) - float(previous_price)
 
     def get(self):
         return self._data
