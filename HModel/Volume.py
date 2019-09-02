@@ -172,10 +172,25 @@ class FuturesPrice(_VolumeIndicator):
 
     @property
     def _target(self):
-        return self._COLUMN_VOLUME
+        return "Price"
+
+    def _calc_delta_of_target(self):
+        column_name = "delta_of_{}".format(self._target)
+        for i, row in enumerate(self._data.rows):
+            if i == 0:
+                row[column_name] = 0
+
+            else:
+                if row[self._COLUMN_IS_CLOSING_DATE]:
+                    row[column_name] = float(row[self._COLUMN_PRICE_CURRENT]) -\
+                                       float(self._data.rows[i-1][self._COLUMN_PRICE_NEXT])
+
+                else:
+                    row[column_name] = float(row[self._COLUMN_PRICE_CURRENT]) -\
+                                       float(self._data.rows[i-1][self._COLUMN_PRICE_CURRENT])
 
     def get(self):
-        pass
+        return self._data
 
     def set(self):
         pass
