@@ -38,10 +38,7 @@ print("isClose in tw:", ClosingDates(dt.date(1998, 9, 16), "fri", 3).is_closing(
 ma_index = MovingAverage(dt.datetime(1998, 9, 1), dt.timedelta(days=1), 60)
 
 
-
 vi = WeightedIndex(conf)
-vi._calc_volume_indicator()
-print(sum(row["volume_indicator"] for row in vi._data.rows[59:]))
-print(vi._data.rows[59])
-vi.calc_delta()
-print(vi.get().rows[59:65])
+vi.init()
+print(sum(row["VolumeIndicator"] for row in vi.get().rows[59:]))
+print("\n".join(map(str, vi.get().rows[59:85])))
