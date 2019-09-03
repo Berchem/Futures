@@ -39,6 +39,11 @@ ma_index = MovingAverage(dt.datetime(1998, 9, 1), dt.timedelta(days=1), 60)
 
 
 vi = WeightedIndex(conf)
-vi.init()
-print(sum(row["VolumeIndicator"] for row in vi.get().rows[59:]))
-print("\n".join(map(str, vi.get().rows[59:85])))
+
+
+# print(sum(row["VolumeIndicator"] for row in vi.get().rows[59:]))
+# print("\n".join(map(str, vi.get().rows[59:85])))
+
+res = vi.calculate()
+# print(res.get())
+
