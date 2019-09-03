@@ -40,6 +40,10 @@ class _VolumeIndicator(ABC):
         self._COLUMN_OPEN_CONTRACT = conf.prop.get("VOLUME", "COLUMN_OPEN_CONTRACT")
         self._COLUMN_TRADED_CONTRACT = conf.prop.get("VOLUME", "COLUMN_TRADED_CONTRACT")
 
+        self.__ma_obj_index = self.__init_ma_obj()
+        self.__ma_obj_volume = self.__init_ma_obj()
+        self.__ma_value_index = 0
+        self.__ma_value_volume = 0
         self.__delta_of_target = 0
         self.__income_of_target = 0
         self.__reserve = 0
@@ -58,9 +62,20 @@ class _VolumeIndicator(ABC):
         table_name = self._conf.prop.get("VOLUME", "TABLE_NAME")
         self._data = data_util.get_data_from_sqlite(database, table_name)
 
+    def __init_ma_obj(self):
+        initial_date = dt.datetime(1998, 9, 1)
+        period = dt.timedelta(days=1)
+        return MovingAverage(initial_date, period, self._INTERVAL)
+
+    def __calc_ma(self, row, ma_obj, series_column_name):
+        time = dt.datetime.strptime(row[self._COLUMN_DATE], self._DATE_FORMAT)
+        series = float(row[series_column_name])
+        ma_obj.update(time, series, series)
+        _, ma_value = ma_obj.get("price")
+        return ma_value
+
     def __check_target(self):
-        if self._target not in self._data.columns:
-            raise Exception("{} not in data".format(self._target))
+        return self._target in self._data.columns
 
     @property
     @abc.abstractmethod
@@ -70,9 +85,10 @@ class _VolumeIndicator(ABC):
     def init(self):
         # basic initialization
         self._load_data()
-        self._calc_ma()
         self._data = self._data.select(
             additional_columns={
+                self._COLUMN_AVG_INDEX: self._calc_ma_index,
+                self._COLUMN_AVG_VOLUME: self._calc_ma_volume,
                 self._COLUMN_VOLUME_INDICATOR: self._calc_volume_indicator,
                 self._COLUMN_IS_CLOSING_DATE: self._is_closing_date
             }
@@ -97,31 +113,13 @@ class _VolumeIndicator(ABC):
         else:
             raise Exception("invalid resource")
 
-    def _calc_ma(self):
-        initial_date = dt.datetime(1998, 9, 1)
-        period = dt.timedelta(days=1)
-        ma_index = MovingAverage(initial_date, period, self._INTERVAL)
-        ma_volume = MovingAverage(initial_date, period, self._INTERVAL)
+    def _calc_ma_index(self, row):
+        self.__ma_value_index = self.__calc_ma(row, self.__ma_obj_index, self._COLUMN_INDEX)
+        return self.__ma_value_index
 
-        def calc_ma(ma_obj, row, series_column_name):
-            time = dt.datetime.strptime(row[self._COLUMN_DATE], self._DATE_FORMAT)
-            series = float(row[series_column_name])
-            ma_obj.update(time, series, series)
-            _, ma_value = ma_obj.get("price")
-            return ma_value
-
-        def calc_ma_index(row):
-            return calc_ma(ma_index, row, self._COLUMN_INDEX)
-
-        def calc_ma_volume(row):
-            return calc_ma(ma_volume, row, self._COLUMN_VOLUME)
-
-        self._data = self._data.select(
-            additional_columns={
-                self._COLUMN_AVG_INDEX: calc_ma_index,
-                self._COLUMN_AVG_VOLUME: calc_ma_volume
-            }
-        )
+    def _calc_ma_volume(self, row):
+        self.__ma_value_volume = self.__calc_ma(row, self.__ma_obj_volume, self._COLUMN_VOLUME)
+        return self.__ma_value_volume
 
     def _is_closing_date(self, row):
         return ClosingDates(
@@ -132,7 +130,7 @@ class _VolumeIndicator(ABC):
 
     def _calc_volume_indicator(self, row):
         volume = float(row[self._COLUMN_VOLUME])
-        avg_volume = row[self._COLUMN_AVG_VOLUME]
+        avg_volume = self.__ma_value_volume
         return 1 if volume - avg_volume >= 0 else -1
 
     def _get_row_index(self, row):
