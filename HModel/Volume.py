@@ -13,10 +13,12 @@ import datetime as dt
 class _VolumeIndicator(ABC):
     def __init__(self, conf):
         self._conf = conf
+        # sharing config (default)
         self._CLOSING_DAY = conf.prop.get("VOLUME", "CLOSING_DAY")
         self._CLOSING_WEEK = int(conf.prop.get("VOLUME", "CLOSING_WEEK"))
         self._LEVERAGE = float(conf.prop.get("VOLUME", "LEVERAGE"))
         self._INITIAL_RESERVE = float(conf.prop.get("VOLUME", "INITIAL_RESERVE"))
+        # source config
         self._INTERVAL = int(conf.prop.get("VOLUME", "INTERVAL"))
         self._DATA_RESOURCE = conf.prop.get("VOLUME", "DATA_RESOURCE")
         self._DATE_FORMAT = conf.prop.get("VOLUME", "DATE_FORMAT")
@@ -26,16 +28,22 @@ class _VolumeIndicator(ABC):
         self._COLUMN_VOLUME = conf.prop.get("VOLUME", "COLUMN_VOLUME")
         self._COLUMN_PRICE_CURRENT = conf.prop.get("VOLUME", "COLUMN_PRICE_CURRENT")
         self._COLUMN_PRICE_NEXT = conf.prop.get("VOLUME", "COLUMN_PRICE_NEXT")
+        # basic config
         self._COLUMN_AVG_INDEX = conf.prop.get("VOLUME", "COLUMN_AVG_INDEX")
         self._COLUMN_AVG_VOLUME = conf.prop.get("VOLUME", "COLUMN_AVG_VOLUME")
         self._COLUMN_VOLUME_INDICATOR = conf.prop.get("VOLUME", "COLUMN_VOLUME_INDICATOR")
+        # advance config
+        self._COLUMN_DELTA_OF_TARGET = conf.prop.get("VOLUME", "COLUMN_DELTA_OF_TARGET")
+        self._COLUMN_INCOME_OF_TARGET = conf.prop.get("VOLUME", "COLUMN_INCOME_OF_TARGET")
         self._COLUMN_RESERVE = conf.prop.get("VOLUME", "COLUMN_RESERVE")
         self._COLUMN_OPEN_CONTRACT = conf.prop.get("VOLUME", "COLUMN_OPEN_CONTRACT")
         self._COLUMN_TRADED_CONTRACT = conf.prop.get("VOLUME", "COLUMN_TRADED_CONTRACT")
 
-        self._reserve = 0
-        self._open_contract = 0
-        self._traded_contract = 0
+        self.__delta_of_target = 0
+        self.__income_of_target = 0
+        self.__reserve = 0
+        self.__open_contract = 0
+        self.__traded_contract = 0
 
         self._data = None
 
@@ -69,8 +77,12 @@ class _VolumeIndicator(ABC):
         )
         # advanced initialization
         self.__check_target()
-        self._calc_delta_of_target()
-        self._calc_income_of_target()
+        self._data = self._data.select(
+            additional_columns={
+                self._COLUMN_DELTA_OF_TARGET.format(self._target): self._calc_delta_of_target,
+                self._COLUMN_INCOME_OF_TARGET.format(self._target): self._calc_income_of_target
+            }
+        )
 
     def _load_data(self):
         data_util = DataUtil()
@@ -121,38 +133,52 @@ class _VolumeIndicator(ABC):
         avg_volume = row[self._COLUMN_AVG_VOLUME]
         return 1 if volume - avg_volume >= 0 else -1
 
-    def _calc_delta_of_target(self):
-        column_name = "delta_of_{}".format(self._target)
-        for i, row in enumerate(self._data.rows):
-            if i == 0:
-                row[column_name] = 0
+    def _get_row_index(self, row):
+        return self._data.rows.index(row)
 
-            else:
-                row[column_name] = float(row[self._target]) - float(self._data.rows[i-1][self._target])
+    def _get_previous_row(self, row):
+        row_index = self._get_row_index(row)
+        return self._data.rows[row_index-1] if row_index > 0 else None
 
-    def _calc_income_of_target(self):
-        column_name = "income_of_{}".format(self._target)
-        for i, row in enumerate(self._data.rows):
-            volume_indicator = self._data.rows[i-1][self._COLUMN_VOLUME_INDICATOR] if i > 0 else 0
-            delta_of_target = row["delta_of_{}".format(self._target)]
-            row[column_name] = volume_indicator * delta_of_target
+    def _calc_delta_of_target(self, row):
+        previous = self._get_previous_row(row)
+        self.__delta_of_target = float(row[self._target]) - float(previous[self._target]) if previous else 0
+        return self.__delta_of_target
+
+    def _calc_income_of_target(self, row):
+        previous = self._get_previous_row(row)
+        volume_indicator = previous[self._COLUMN_VOLUME_INDICATOR] if previous else 0
+        self.__income_of_target = volume_indicator * self.__delta_of_target
+        return self.__income_of_target
 
     def _calc_open_contract(self, row):
-        reserve = self._reserve
+        reserve = self.__reserve
         target = float(row[self._target])
         volume_indicator = row[self._COLUMN_VOLUME_INDICATOR]
-        self._open_contract = int(reserve * self._LEVERAGE / target) * volume_indicator
-        return self._open_contract
+        self.__open_contract = int(reserve * self._LEVERAGE / target) * volume_indicator
+        return self.__open_contract
 
     def _calc_traded_contract(self, row):
         pass
 
     def _calc_reserve(self, row):
-        reserve = self._INITIAL_RESERVE if self._reserve == 0 else self._reserve
-        delta_of_target = row["delta_of_{}".format(self._target)]
-        open_contract = self._open_contract
-        self._reserve = reserve + delta_of_target * open_contract
-        return self._reserve
+        reserve = self._INITIAL_RESERVE if self.__reserve == 0 else self.__reserve
+        delta_of_target = row[self._COLUMN_DELTA_OF_TARGET.format(self._target)]
+        open_contract = self.__open_contract
+        self.__reserve = reserve + delta_of_target * open_contract
+        return self.__reserve
+
+    def calculate(self):
+        vi = self.__class__(self._conf)
+        vi.init()
+        vi._data.rows = vi._data.rows[vi._INTERVAL-2:]
+        vi._data = vi._data.select(
+            additional_columns={
+                vi._COLUMN_RESERVE: vi._calc_reserve,
+                vi._COLUMN_OPEN_CONTRACT: vi._calc_open_contract
+            }
+        )
+        return vi
 
     @abc.abstractmethod
     def get(self):
