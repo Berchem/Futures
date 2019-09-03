@@ -45,5 +45,8 @@ vi = WeightedIndex(conf)
 # print("\n".join(map(str, vi.get().rows[59:85])))
 
 res = vi.calculate()
-# print(res.get())
+res_table = res.get()
+print(res_table)
+
+# print(len(res._tmp.rows))
 

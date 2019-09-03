@@ -4,6 +4,7 @@ from Futures.Config import Config
 from Futures.DataUtil import DataUtil
 from Futures.Util import MovingAverage
 from Futures.Util import ClosingDates
+from MypseudoSQL import Table
 import os
 import abc
 from abc import ABC
@@ -46,6 +47,7 @@ class _VolumeIndicator(ABC):
         self.__traded_contract = 0
 
         self._data = None
+        self._tmp = None
 
     def __load_data_from_file(self, data_util):
         filename = self._conf.prop.get("VOLUME", "RESOURCE_FILENAME")
@@ -159,7 +161,10 @@ class _VolumeIndicator(ABC):
         return self.__open_contract
 
     def _calc_traded_contract(self, row):
-        pass
+        previous_contract = self.__open_contract
+        current_contract = self._calc_open_contract(row)
+        self.__traded_contract = abs(current_contract - previous_contract)
+        return self.__traded_contract
 
     def _calc_reserve(self, row):
         reserve = self._INITIAL_RESERVE if self.__reserve == 0 else self.__reserve
@@ -168,16 +173,33 @@ class _VolumeIndicator(ABC):
         self.__reserve = reserve + delta_of_target * open_contract
         return self.__reserve
 
-    def calculate(self):
+    def _generate_cache(self, leverage, interval, start_index):
         vi = self.__class__(self._conf)
+
+        if leverage is not None:
+            vi._LEVERAGE = leverage
+
+        if interval is not None:
+            vi._INTERVAL = interval
+
+        if start_index is None:
+            start_index = vi._INTERVAL - 2
+
         vi.init()
-        vi._data.rows = vi._data.rows[vi._INTERVAL-2:]
-        vi._data = vi._data.select(
+        vi._tmp = Table(vi._data.columns)
+        vi._tmp.rows = vi._data.rows[start_index:]
+        return vi
+
+    def calculate(self, leverage=None, interval=None, start_index=None):
+        vi = self._generate_cache(leverage, interval, start_index)
+        vi._tmp = vi._tmp.select(
             additional_columns={
                 vi._COLUMN_RESERVE: vi._calc_reserve,
-                vi._COLUMN_OPEN_CONTRACT: vi._calc_open_contract
+                vi._COLUMN_TRADED_CONTRACT: vi._calc_traded_contract,
+                vi._COLUMN_OPEN_CONTRACT: vi._calc_open_contract,
             }
         )
+        vi._tmp.rows = vi._tmp.rows[1:]
         return vi
 
     @abc.abstractmethod
@@ -198,10 +220,10 @@ class WeightedIndex(_VolumeIndicator):
         return self._COLUMN_INDEX
 
     def get(self):
-        return self._data
+        return self._tmp if self._tmp else self._data
 
-    def set(self):
-        pass
+    def set(self, name, value):
+        setattr(self.__class__, name, value)
 
 
 class FuturesPrice(_VolumeIndicator):
