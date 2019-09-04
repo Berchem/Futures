@@ -1,77 +1,62 @@
 # -*- coding: utf-8 -*-
 
+import matplotlib.pyplot as plt
+
 from Futures.Config import Config
-from Futures.DataUtil import DataUtil
-from Futures.Util import *
 from HModel.Volume import *
-import os
-import datetime as dt
+
+leverage_matrix = [
+    dict(zip(["LEVERAGE", "YearlyROI", "FuturesPrice"], [1.0, 0.113329, 0.07388])),
+    dict(zip(["LEVERAGE", "YearlyROI", "FuturesPrice"], [1.5, 0.176131, 0.100811])),
+    dict(zip(["LEVERAGE", "YearlyROI", "FuturesPrice"], [2.0, 0.196055, 0.105226])),
+    dict(zip(["LEVERAGE", "YearlyROI", "FuturesPrice"], [2.5, 0.234837, 0.092933])),
+    dict(zip(["LEVERAGE", "YearlyROI", "FuturesPrice"], [3.0, 0.234157, 0.066772])),
+    dict(zip(["LEVERAGE", "YearlyROI", "FuturesPrice"], [3.5, 0.242749, 0.028326])),
+    dict(zip(["LEVERAGE", "YearlyROI", "FuturesPrice"], [4.0, 0.219047, -0.08158])),
+    dict(zip(["LEVERAGE", "YearlyROI", "FuturesPrice"], [4.5, 0.195386, -0.09382])),
+    dict(zip(["LEVERAGE", "YearlyROI", "FuturesPrice"], [5.0, 0.151051, -0.11831])),
+    dict(zip(["LEVERAGE", "YearlyROI", "FuturesPrice"], [5.5, 0.095163, -0.12339])),
+    dict(zip(["LEVERAGE", "YearlyROI", "FuturesPrice"], [6.0, 0.016063, -0.13232])),
+]
+
+
+@clock
+def estimate_effect(obj, leverages, intervals):
+    result = []
+    for leverage in leverages:
+        for interval in intervals:
+            res = obj.calculate(leverage, interval)
+            res_table = res.get()
+            res_latest = res_table.rows[-1]
+            reserve = res_latest["Reserve"]
+            yearly_rate_of_return = (reserve / res._INITIAL_RESERVE) ** (1 / 20) - 1
+            result += [{"LEVERAGE": leverage,
+                        "YearlyROI": yearly_rate_of_return}]
+    return result
+
+
+def graph_effect(results, target):
+    leverages, book_sample, my_implement = [], [], []
+    for i in range(len(results)):
+        leverages += [leverage_matrix[i][target]]
+        book_sample += [leverage_matrix[i]["YearlyROI"] * 100]
+        my_implement += [results[i]["YearlyROI"] * 100]
+
+    plt.figure()
+    plt.plot(leverages, book_sample, "o-")
+    plt.plot(leverages, my_implement, "o-")
+    plt.ylabel("Yearly Rate Of Return, %")
+    plt.xlabel("Leverage")
+    plt.legend(["book sample", "my implement"])
+    plt.show()
+
 
 conf = Config("../test_resources/conf/test-conf.ini")
-filename = conf.prop.get("VOLUME", "RESOURCE_FILENAME")
-print(type(conf.prop.get("VOLUME", "INTERVAL")))
-data_util = DataUtil()
-data = data_util.get_data_from_file(filename, 1)
-print(data.limit(5))
+vi_w = WeightedIndex(conf)
+vi_w.init()
 
-t = dt.datetime.strptime("2017-08-15 09:01:35.17", "%Y-%m-%d %H:%M:%S.%f")
-t_i = dt.datetime.strptime("2017-08-15 09:01:35.7", "%Y-%m-%d %H:%M:%S.%f")
+vi_f = FuturesPrice(conf)
+vi_f.init()
 
-print(t_i - t)
-
-print("%12s: %d" % ("year", t.year))
-print("%12s: %d" % ("month", t.month))
-print("%12s: %d" % ("day", t.day))
-print("%12s: %d" % ("hour", t.hour))
-print("%12s: %d" % ("minute", t.minute))
-print("%12s: %d" % ("second", t.second))
-print("%12s: %d" % ("microsecond", t.microsecond))
-
-
-cd = ClosingDates(dt.date(2019, 6, 21), "fri", 3)
-print("date:", cd.get())
-print("isClose in tw:", cd.is_closing())
-
-print("date:", ClosingDates(dt.date(1998, 9, 21), "wed", 3).get())
-print("isClose in tw:", ClosingDates(dt.date(1998, 9, 16), "fri", 3).is_closing())
-
-ma_index = MovingAverage(dt.datetime(1998, 9, 1), dt.timedelta(days=1), 60)
-
-
-vi = WeightedIndex(conf)
-
-vi.init()
-# print(sum(row["VolumeIndicator"] for row in vi.get().rows[59:]))
-# print("\n".join(map(str, vi.get().rows[59:85])))
-res = vi.calculate()
-print("vi data shape = (%d, %d)" % (len(vi._data.columns), len(vi._data.rows)), vi._data.columns)
-print("vi tmp shape = (%d, %d)" % (len(vi._tmp.columns), len(vi._tmp.rows)), vi._tmp.columns)
-
-print("res data shape = (%d, %d)" % (len(res._data.columns), len(res._data.rows)), res._data.columns)
-print("res tmp shape = (%d, %d)" % (len(res._tmp.columns), len(res._tmp.rows)), res._tmp.columns)
-
-print("\n\n\n")
-
-import time
-
-results = []
-t0 = time.perf_counter()
-for i in range(8):
-    for j in range(10, 101, 10):
-        res = vi.calculate(i+1, j)
-        res_table = res.get()
-        res_latest = res_table.rows[-1]
-        reserve = res_latest["Reserve"]
-        expectation = (reserve / res._INITIAL_RESERVE) ** (1 / 20)
-        results += [(expectation, i, j)]
-
-print(time.perf_counter() - t0)
-
-high = 0
-for res in results:
-    print(res)
-    if res[0] > high:
-        high = res[0]
-        best = res
-print()
-print(best)
+results = estimate_effect(vi_w, [i * 0.5 for i in range(2, 13)], [60])
+graph_effect(results, "LEVERAGE")
