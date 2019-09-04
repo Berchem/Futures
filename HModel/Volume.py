@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 
-from Futures.Config import Config
-from Futures.DataUtil import DataUtil
-from Futures.Util import deprecated
-from Futures.Util import MovingAverage
-from Futures.Util import ClosingDates
-from MypseudoSQL import Table
-import time
 import abc
-from abc import ABC
 import datetime as dt
+from abc import ABC
+
+from Futures.DataUtil import DataUtil
+from Futures.Util import ClosingDates
+from Futures.Util import MovingAverage
+from Futures.Util import deprecated
+from Futures.Util import clock
 
 
 class _VolumeIndicator(ABC):
@@ -205,6 +204,7 @@ class _VolumeIndicator(ABC):
         vi._tmp.rows = vi._tmp.rows[start_index:]
         return vi
 
+    @clock
     def calculate(self, leverage=None, interval=None, start_index=None):
         vi = self._generate_cache(leverage, interval, start_index)
         vi._tmp = vi._tmp.select(
@@ -215,7 +215,8 @@ class _VolumeIndicator(ABC):
             }
         )
         vi._tmp.rows = vi._tmp.rows[1:]
-        print("The calculation is done for leverage={}, interval={}".format(vi._LEVERAGE, vi._INTERVAL))
+        print("The calculation is done for leverage={}, interval={}".format(vi._LEVERAGE, vi._INTERVAL),
+              end=". runtime: ")
         return vi
 
     @abc.abstractmethod
