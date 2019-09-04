@@ -3,8 +3,17 @@ import warnings
 import functools
 import csv
 import abc
-import datetime as dt
+import time
 from abc import ABC
+
+
+def clock(func):
+    def wrapper(*args):
+        start_time = time.perf_counter()
+        result = func(*args)
+        print(time.perf_counter() - start_time)
+        return result
+    return wrapper
 
 
 def deprecated(func):
