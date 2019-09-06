@@ -40,8 +40,8 @@ class _VolumeIndicator(ABC):
         self._COLUMN_OPEN_CONTRACT = conf.prop.get("VOLUME", "COLUMN_OPEN_CONTRACT")
         self._COLUMN_TRADED_CONTRACT = conf.prop.get("VOLUME", "COLUMN_TRADED_CONTRACT")
 
-        self.__ma_obj_index = self.__init_ma_obj()
-        self.__ma_obj_volume = self.__init_ma_obj()
+        self.__ma_obj_index = None
+        self.__ma_obj_volume = None
         self.__ma_value_index = 0
         self.__ma_value_volume = 0
 
@@ -92,7 +92,10 @@ class _VolumeIndicator(ABC):
         if self._data is None:
             self._load_data()
             self.__check_target()
-
+            
+        self.__ma_obj_index = self.__init_ma_obj()
+        self.__ma_obj_volume = self.__init_ma_obj()
+        
         self._tmp = self._data.select(
             additional_columns={
                 # basic initialization
