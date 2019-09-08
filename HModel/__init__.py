@@ -32,6 +32,8 @@ class _Indicator(ABC):
         self._COLUMN_AVG_INDEX = conf.prop.get("VOLUME", "COLUMN_AVG_INDEX")
         self._COLUMN_AVG_VOLUME = conf.prop.get("VOLUME", "COLUMN_AVG_VOLUME")
         self._COLUMN_VOLUME_INDICATOR = conf.prop.get("VOLUME", "COLUMN_VOLUME_INDICATOR")
+        self._COLUMN_DIFFERENCE = conf.prop.get("VOLUME", "COLUMN_DIFFERENCE")
+        self._COLUMN_DIFFERENCE_INDICATOR = conf.prop.get("VOLUME", "COLUMN_DIFFERENCE_INDICATOR")
         # advance config
         self._COLUMN_DELTA_OF_TARGET = conf.prop.get("VOLUME", "COLUMN_DELTA_OF_TARGET")
         self._COLUMN_INCOME_OF_TARGET = conf.prop.get("VOLUME", "COLUMN_INCOME_OF_TARGET")
@@ -46,6 +48,9 @@ class _Indicator(ABC):
 
         self.__volume_indicator_previous = 0
         self.__volume_indicator_current = 0
+
+        self.__difference = 0
+        self.__difference_indicator = 0
 
         self._is_closing = False
         self._value_of_target = 0
@@ -135,13 +140,25 @@ class _Indicator(ABC):
 
     def _is_closing_date(self, row):
         date = dt.datetime.strptime(row[self._COLUMN_DATE], self._DATE_FORMAT)
-        return ClosingDates(date, self._CLOSING_DAY, self._CLOSING_WEEK).is_closing()
+        self._is_closing = ClosingDates(date, self._CLOSING_DAY, self._CLOSING_WEEK).is_closing()
+        return self._is_closing
 
     def _calc_volume_indicator(self, row):
         delta = float(row[self._COLUMN_VOLUME]) - self.__ma_value_volume
         self.__volume_indicator_previous = self.__volume_indicator_current
         self.__volume_indicator_current = 1 if delta > 0 else -1 if delta < 0 else 0
         return self.__volume_indicator_current
+
+    def _calc_difference(self, row):
+        price = float(row[self._COLUMN_PRICE_NEXT if self._is_closing else self._COLUMN_PRICE_CURRENT])
+        index = float(row[self._COLUMN_INDEX])
+        self.__difference = price / index - 1
+        return self.__difference
+
+    def _calc_difference_indicator(self, row):
+        difference = self._calc_difference(row)
+        self.__difference_indicator = 1 if difference > 0 else -1 if difference < 0 else 0
+        return self.__difference_indicator
 
     def _get_row_index(self, row):
         return self._data.rows.index(row)

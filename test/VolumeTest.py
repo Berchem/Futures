@@ -137,10 +137,10 @@ def effect_of_interval_on_futures_price(*pos):
     show(target, factor, pos)
 
 
-# fig = plt.figure(figsize=(11.2, 9.6))
-effect_of_leverage_on_weighted_index(1, 1, 1)
-# effect_of_interval_on_weighted_index(2, 2, 2)
-# effect_of_leverage_on_futures_price(2, 2, 3)
-# effect_of_interval_on_futures_price(2, 2, 4)
-# plt.tight_layout()
-# fig.savefig("../test_resources/effect of leverage X interval on index X price.png")
+fig = plt.figure(figsize=(11.2, 9.6))
+effect_of_leverage_on_weighted_index(2, 2, 1)
+effect_of_interval_on_weighted_index(2, 2, 2)
+effect_of_leverage_on_futures_price(2, 2, 3)
+effect_of_interval_on_futures_price(2, 2, 4)
+plt.tight_layout()
+fig.savefig("../test_resources/effect of leverage X interval on index X price.png")
