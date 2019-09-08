@@ -1,6 +1,0 @@
-{
-  "ConfigTest.py::ConfigTest::test_": true,
-  "UtilTest.py::UtilTest": true,
-  "UtilTest.py::UtilTest::test_OpenHighLowClose": true,
-  "UtilTest.py::UtilTest::test_close_price": true
-}
