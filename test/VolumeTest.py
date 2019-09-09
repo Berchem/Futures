@@ -50,7 +50,7 @@ def estimate_effect(target, factor):
     results = []
     for leverage in factor["LEVERAGE"]:
         for interval in factor["INTERVAL"]:
-            res = target["obj"].calculate(leverage, interval)
+            res = target["obj"].calculate(leverage=leverage, interval=interval)
             res_table = res.get()
             res_latest = res_table.rows[-1]
             reserve = res_latest["Reserve"]
@@ -137,14 +137,14 @@ def effect_of_interval_on_futures_price(*pos):
     show(target, factor, pos)
 
 
-# fig = plt.figure(figsize=(11.2, 9.6))
-# effect_of_leverage_on_weighted_index(2, 2, 1)
-# effect_of_interval_on_weighted_index(2, 2, 2)
-# effect_of_leverage_on_futures_price(2, 2, 3)
-# effect_of_interval_on_futures_price(2, 2, 4)
-# plt.tight_layout()
-# fig.savefig("../test_resources/effect of leverage X interval on index X price.png")
-res = futures_price.calculate("difference", interval=60, leverage=2)
-res_table = res.get()
-res_table.rows = res_table.rows[-10:]
-print(res_table)
+fig = plt.figure(figsize=(11.2, 9.6))
+effect_of_leverage_on_weighted_index(2, 2, 1)
+effect_of_interval_on_weighted_index(2, 2, 2)
+effect_of_leverage_on_futures_price(2, 2, 3)
+effect_of_interval_on_futures_price(2, 2, 4)
+plt.tight_layout()
+fig.savefig("../test_resources/effect of leverage X interval on index X price.png")
+# res = futures_price.calculate("difference", interval=60, leverage=2)
+# res_table = res.get()
+# res_table.rows = res_table.rows[-10:]
+# print(res_table)
