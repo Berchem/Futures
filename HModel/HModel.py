@@ -64,8 +64,8 @@ class FuturesPrice(_Indicator):
         name = self._COLUMN_PRICE_CURRENT if row[self._COLUMN_IS_CLOSING_DATE] else self._COLUMN_PRICE_NEXT
         reserve = self._reserve
         target = float(row[name])
-        volume_indicator = row[self._COLUMN_VOLUME_INDICATOR]
-        self._open_contract = int(reserve * self._LEVERAGE / target) * volume_indicator
+        indicator = self._get_indicator(row)
+        self._open_contract = int(reserve * self._LEVERAGE / target) * indicator
         return self._open_contract
 
     def get(self, name="data"):

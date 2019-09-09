@@ -8,9 +8,9 @@ from abc import ABC
 
 
 def clock(func):
-    def wrapper(*args):
+    def wrapper(*args, **kwargs):
         start_time = time.perf_counter()
-        result = func(*args)
+        result = func(*args, **kwargs)
         print(time.perf_counter() - start_time)
         return result
     return wrapper

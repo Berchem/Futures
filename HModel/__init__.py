@@ -18,6 +18,7 @@ class _Indicator(ABC):
         self._CLOSING_WEEK = int(conf.prop.get("VOLUME", "CLOSING_WEEK"))
         self._LEVERAGE = float(conf.prop.get("VOLUME", "LEVERAGE"))
         self._INITIAL_RESERVE = float(conf.prop.get("VOLUME", "INITIAL_RESERVE"))
+        self._INDICATOR=conf.prop.get("VOLUME", "INDICATOR")
         # source config
         self._INTERVAL = int(conf.prop.get("VOLUME", "INTERVAL"))
         self._DATA_RESOURCE = conf.prop.get("VOLUME", "DATA_RESOURCE")
@@ -113,6 +114,8 @@ class _Indicator(ABC):
                 self._COLUMN_AVG_VOLUME: self._calc_ma_volume,
                 self._COLUMN_VOLUME_INDICATOR: self._calc_volume_indicator,
                 self._COLUMN_IS_CLOSING_DATE: self._is_closing_date,
+                self._COLUMN_DIFFERENCE: self._calc_difference,
+                self._COLUMN_DIFFERENCE_INDICATOR: self._calc_difference_indicator,
                 # advanced initialization
                 self._COLUMN_DELTA_OF_TARGET.format(self._target): self._calc_delta_of_target,
                 self._COLUMN_INCOME_OF_TARGET.format(self._target): self._calc_income_of_target,
@@ -157,7 +160,7 @@ class _Indicator(ABC):
 
     def _calc_difference_indicator(self, row):
         difference = self._calc_difference(row)
-        self.__difference_indicator = 1 if difference > 0 else -1 if difference < 0 else 0
+        self.__difference_indicator = -1 if difference > 0 else 1 if difference < 0 else 0
         return self.__difference_indicator
 
     def _get_row_index(self, row):
@@ -204,17 +207,32 @@ class _Indicator(ABC):
         self.__traded_contract = abs(current_contract - previous_contract)
         return self.__traded_contract
 
+    def _get_indicator(self, row):
+        volume_indicator = row[self._COLUMN_VOLUME_INDICATOR]
+        difference_indicator = row[self._COLUMN_DIFFERENCE_INDICATOR]
+        if self._INDICATOR == "volume":
+            indicator = volume_indicator
+
+        elif self._INDICATOR == "difference":
+            indicator = difference_indicator
+
+        return indicator
+
     def _calc_open_contract(self, row):
         reserve = self._reserve
         target = float(row[self._target])
-        volume_indicator = row[self._COLUMN_VOLUME_INDICATOR]
+        indicator = self._get_indicator(row)
         # volume_indicator = self.__volume_indicator_current
-        self._open_contract = int(reserve * self._LEVERAGE / target) * volume_indicator
+        self._open_contract = int(reserve * self._LEVERAGE / target) * indicator
         return self._open_contract
 
-    def _generate_cache(self, leverage, interval, start_index):
+    def _generate_cache(self, indicator, leverage, interval, start_index):
         vi = self.__class__(self._conf)
         vi._data = self._data
+
+        indicator = indicator.lower()
+        if indicator is not None:
+            vi._INDICATOR = indicator
 
         if leverage is not None:
             vi._LEVERAGE = leverage
@@ -230,8 +248,8 @@ class _Indicator(ABC):
         return vi
 
     @clock
-    def calculate(self, leverage=None, interval=None, start_index=None):
-        vi = self._generate_cache(leverage, interval, start_index)
+    def calculate(self, indicator="volume", leverage=None, interval=None, start_index=None):
+        vi = self._generate_cache(indicator, leverage, interval, start_index)
         vi._tmp = vi._tmp.select(
             additional_columns={
                 vi._COLUMN_RESERVE: vi._calc_reserve,
@@ -240,8 +258,9 @@ class _Indicator(ABC):
             }
         )
         vi._tmp.rows = vi._tmp.rows[1:]
-        print("The calculation is done for leverage={}, interval={}".format(vi._LEVERAGE, vi._INTERVAL),
-              end=". runtime: ")
+        print("The calculation is done for indicator={}, leverage={}, interval={}".format(
+            vi._INDICATOR, vi._LEVERAGE, vi._INTERVAL),
+            end=". runtime: ")
         return vi
 
     @abc.abstractmethod
