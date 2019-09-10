@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 import os
 import unittest
+import datetime as dt
 from Futures.Util import *
 from Futures.DataUtil import DataUtil
 from MypseudoSQL import Table
@@ -331,7 +332,8 @@ class UtilTest(unittest.TestCase):
 
     def generate_volume_count_result(self, filename, period):
         result = self.data_util.get_data_from_file(filename, 1)
-        volume_count_obj = VolumeCount("8450000", period * 6000)
+        initial_time = time_to_num("8450000")
+        volume_count_obj = VolumeCount(initial_time, period * 6000)
         selected = Table(["time", "volume"])
         for row in result.rows:
             volume_count_obj.update(row["INFO_TIME"], int(row["AMOUNT"]))

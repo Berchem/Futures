@@ -54,7 +54,7 @@ def estimate_effect(target, factor):
             res_table = res.get()
             res_latest = res_table.rows[-1]
             reserve = res_latest["Reserve"]
-            yearly_rate_of_return = (reserve / res._INITIAL_RESERVE) ** (1 / 20) - 1
+            yearly_rate_of_return = (reserve / res.get("initial_reserve")) ** (1 / 20) - 1
             results += [{factor["main"]: leverage,
                         target["name"]: yearly_rate_of_return}]
 
@@ -137,14 +137,55 @@ def effect_of_interval_on_futures_price(*pos):
     show(target, factor, pos)
 
 
-fig = plt.figure(figsize=(11.2, 9.6))
-effect_of_leverage_on_weighted_index(2, 2, 1)
-effect_of_interval_on_weighted_index(2, 2, 2)
-effect_of_leverage_on_futures_price(2, 2, 3)
-effect_of_interval_on_futures_price(2, 2, 4)
-plt.tight_layout()
-fig.savefig("../test_resources/effect of leverage X interval on index X price.png")
-# res = futures_price.calculate("difference", interval=60, leverage=2)
+# fig = plt.figure(figsize=(11.2, 9.6))
+# effect_of_leverage_on_weighted_index(2, 2, 1)
+# effect_of_interval_on_weighted_index(2, 2, 2)
+# effect_of_leverage_on_futures_price(2, 2, 3)
+# effect_of_interval_on_futures_price(2, 2, 4)
+# plt.tight_layout()
+# fig.savefig("../test_resources/effect of leverage X interval on index X price.png")
+
+# effect on difference
+leverages = [0.5 * i for i in range(2, 13)]
+intervals = [i * 10 for i in range(1, 12)]
+performance_estimation = []
+
+for leverage in leverages:
+    for interval in intervals:
+        res = futures_price.calculate("difference", interval=interval, leverage=leverage)
+        res_table = res.get()
+        res_latest = res_table.rows[-1]
+        reserve = res_latest["Reserve"]
+        yearly_rate_of_return = (reserve / res.get("initial_reserve")) ** (1 / 20) - 1
+        performance_estimation += [
+            {
+                "leverage": leverage,
+                "interval": interval,
+                "roi": yearly_rate_of_return
+            }
+        ]
+
+
+best_roi = -999
+best = None
+for est in performance_estimation:
+    print(performance_estimation[-1])
+    roi = est["roi"]
+    if roi > best_roi:
+        best_roi = roi
+        best = est
+print(best)
+
+
+import pandas as pd
+import seaborn as sns
+
+
+df = pd.DataFrame(performance_estimation)
+df = df.pivot("interval", "leverage", "roi")
+
+ax = sns.heatmap(df, linewidth=0.1, cmap="YlGnBu", annot=True, fmt=".3f")
+plt.show()
 # res_table = res.get()
 # res_table.rows = res_table.rows[-10:]
 # print(res_table)
