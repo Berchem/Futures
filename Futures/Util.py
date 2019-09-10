@@ -102,7 +102,13 @@ class _TechnicalIndicators(ABC):
         self._time = None
 
     def _is_out_of_order(self, timestamp):
-        if timestamp < self._time:
+        if isinstance(self._time, str):
+            _time = time_to_num(self._time)
+
+        else:
+            _time = self._time
+
+        if timestamp < _time:
             raise Exception("timestamp is out of order")
 
     @abc.abstractmethod
