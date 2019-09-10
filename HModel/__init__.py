@@ -159,8 +159,10 @@ class _Indicator(ABC):
         return self.__difference
 
     def _calc_difference_indicator(self, row):
-        difference = self._calc_difference(row)
-        self.__difference_indicator = -1 if difference > 0 else 1 if difference < 0 else 0
+        difference = self._calc_difference(row)  # percentage of index
+        diff_ind = 1 if difference > 0 else -1 if difference < 0 else 0
+        anti_diff_ind = -1 * diff_ind
+        self.__difference_indicator = anti_diff_ind
         return self.__difference_indicator
 
     def _get_row_index(self, row):
@@ -214,6 +216,9 @@ class _Indicator(ABC):
             indicator = volume_indicator
 
         elif self._INDICATOR == "difference":
+            indicator = difference_indicator
+
+        else:
             indicator = difference_indicator
 
         return indicator
