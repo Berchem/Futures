@@ -19,6 +19,9 @@ weighted_index.init()
 futures_price = FuturesPrice(conf)
 futures_price.init()
 
+sample_matrix = sample_matrix_ch_3
+default_leverage = 1
+default_interval = 40
 results = []
 
 
@@ -68,7 +71,7 @@ def effect_of_leverage_on_weighted_index(*pos):
     factor = {
         "main": "LEVERAGE",
         "LEVERAGE": [i * 0.5 for i in range(2, 13)],
-        "INTERVAL": [60]
+        "INTERVAL": [default_interval]
     }
     show(target, factor, pos)
 
@@ -81,7 +84,7 @@ def effect_of_interval_on_weighted_index(*pos):
 
     factor = {
         "main": "INTERVAL",
-        "LEVERAGE": [1],
+        "LEVERAGE": [default_leverage],
         "INTERVAL": [i * 10 for i in range(1, 12)]
     }
     show(target, factor, pos)
@@ -96,7 +99,7 @@ def effect_of_leverage_on_futures_price(*pos):
     factor = {
         "main": "LEVERAGE",
         "LEVERAGE": [i * 0.5 for i in range(2, 13)],
-        "INTERVAL": [60]
+        "INTERVAL": [default_interval]
     }
     show(target, factor, pos)
 
@@ -109,7 +112,7 @@ def effect_of_interval_on_futures_price(*pos):
 
     factor = {
         "main": "INTERVAL",
-        "LEVERAGE": [1],
+        "LEVERAGE": [default_leverage],
         "INTERVAL": [i * 10 for i in range(1, 12)]
     }
     show(target, factor, pos)
@@ -123,5 +126,5 @@ effect_of_interval_on_futures_price(2, 2, 4)
 plt.tight_layout()
 
 filename = os.path.join(BASE_DIR, "test_resources", "HModel",
-                        "effect of leverage X interval on index X price.png")
+                        "effect of leverage X interval on index X price (2).png")
 fig.savefig(filename)
