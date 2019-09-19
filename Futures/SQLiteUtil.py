@@ -28,7 +28,7 @@ class SQLite:
         else:
             filename = path_str
             data = read_csv(filename, with_header=True)
-        columns = ",".join("?" for _ in xrange(len(data[0])))
+        columns = ",".join("?" for _ in range(len(data[0])))
         insert_query = insert_template.format(table=table_name, column=columns)
         self.conn.executemany(insert_query, data)
         self.conn.commit()
