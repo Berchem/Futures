@@ -61,7 +61,7 @@ class FuturesPrice(_Indicator):
         return self._delta_of_target
 
     def _calc_open_contract(self, row):
-        name = self._COLUMN_PRICE_CURRENT if row[self._COLUMN_IS_CLOSING_DATE] else self._COLUMN_PRICE_NEXT
+        name = self._COLUMN_PRICE_NEXT if row[self._COLUMN_IS_CLOSING_DATE] else self._COLUMN_PRICE_CURRENT
         reserve = self._reserve
         target = float(row[name])
         indicator = self._get_indicator(row)
@@ -79,6 +79,9 @@ class FuturesPrice(_Indicator):
 
         elif attr_name == "initial_reserve":
             return self._INITIAL_RESERVE
+
+        elif attr_name == "reserve":
+            return self._tmp.rows[-1][self._COLUMN_RESERVE]
 
         else:
             return self._tmp if self._tmp else self._data

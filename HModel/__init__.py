@@ -18,9 +18,10 @@ class _Indicator(ABC):
         self._CLOSING_WEEK = int(conf.prop.get("VOLUME", "CLOSING_WEEK"))
         self._LEVERAGE = float(conf.prop.get("VOLUME", "LEVERAGE"))
         self._INITIAL_RESERVE = float(conf.prop.get("VOLUME", "INITIAL_RESERVE"))
-        self._INDICATOR=conf.prop.get("VOLUME", "INDICATOR")
-        # source config
+        self._INDICATOR = conf.prop.get("VOLUME", "INDICATOR")
         self._INTERVAL = int(conf.prop.get("VOLUME", "INTERVAL"))
+        self._TRANSACTION_COST = float(conf.prop.get("VOLUME", "TRANSACTION_COST"))
+        # source config
         self._DATA_RESOURCE = conf.prop.get("VOLUME", "DATA_RESOURCE")
         self._DATE_FORMAT = conf.prop.get("VOLUME", "DATE_FORMAT")
         self._COLUMN_IS_CLOSING_DATE = conf.prop.get("VOLUME", "COLUMN_IS_CLOSING_DATE")
@@ -53,6 +54,7 @@ class _Indicator(ABC):
         self.__difference = 0
         self.__difference_indicator = 0
 
+        self.__date = dt.datetime(1998, 9, 8)
         self._is_closing = False
         self._value_of_target = 0
         self._delta_of_target = 0
@@ -143,7 +145,11 @@ class _Indicator(ABC):
 
     def _is_closing_date(self, row):
         date = dt.datetime.strptime(row[self._COLUMN_DATE], self._DATE_FORMAT)
-        self._is_closing = ClosingDates(date, self._CLOSING_DAY, self._CLOSING_WEEK).is_closing()
+        closing_date = ClosingDates(date, self._CLOSING_DAY, self._CLOSING_WEEK)
+        ideal_closing_date = closing_date.get()
+        self._is_closing = self.__date < ideal_closing_date <= date
+        # cache previous date
+        self.__date = date
         return self._is_closing
 
     def _calc_volume_indicator(self, row):
@@ -200,13 +206,17 @@ class _Indicator(ABC):
         delta_of_target = row[self._COLUMN_DELTA_OF_TARGET.format(self._target)]
         # delta_of_target = self.__delta_of_target
         open_contract = self._open_contract
-        self._reserve = reserve + delta_of_target * open_contract
+        transaction_cost = self.__traded_contract * self._TRANSACTION_COST
+        self._reserve = reserve + delta_of_target * open_contract - transaction_cost
         return self._reserve
 
     def _calc_traded_contract(self, row):
         previous_contract = self._open_contract
         current_contract = self._calc_open_contract(row)
-        self.__traded_contract = abs(current_contract - previous_contract)
+        if row[self._COLUMN_IS_CLOSING_DATE]:
+            self.__traded_contract = abs(current_contract) + abs(previous_contract)
+        else:
+            self.__traded_contract = abs(current_contract - previous_contract)
         return self.__traded_contract
 
     def _get_indicator(self, row):
@@ -217,6 +227,16 @@ class _Indicator(ABC):
 
         elif self._INDICATOR == "difference":
             indicator = difference_indicator
+
+        elif self._INDICATOR == "portfolio":
+            indicator = self._WEIGHT * difference_indicator + (1 - self._WEIGHT) * volume_indicator
+
+        elif self._INDICATOR == "h_model":  # self._INDICATOR = 0.5
+            if abs(row[self._COLUMN_DIFFERENCE]) * 100 > self._THRESHOLD:
+                indicator = difference_indicator
+
+            else:
+                indicator = volume_indicator
 
         else:
             indicator = difference_indicator
@@ -231,7 +251,7 @@ class _Indicator(ABC):
         self._open_contract = int(reserve * self._LEVERAGE / target) * indicator
         return self._open_contract
 
-    def _generate_cache(self, indicator, leverage, interval, start_index):
+    def _generate_cache(self, indicator, leverage, interval, start_index, **kwargs):
         vi = self.__class__(self._conf)
         vi._data = self._data
 
@@ -248,13 +268,19 @@ class _Indicator(ABC):
         if start_index is None:
             start_index = vi._INTERVAL - 2
 
+        if "threshold" in kwargs:
+            vi._THRESHOLD = kwargs["threshold"]
+
+        if "weight" in kwargs:
+            vi._WEIGHT = kwargs["weight"]
+
         vi.init()
         vi._tmp.rows = vi._tmp.rows[start_index:]
         return vi
 
     @clock
-    def calculate(self, indicator="volume", leverage=None, interval=None, start_index=None):
-        vi = self._generate_cache(indicator, leverage, interval, start_index)
+    def calculate(self, indicator="volume", leverage=None, interval=None, start_index=None, **kwargs):
+        vi = self._generate_cache(indicator, leverage, interval, start_index, **kwargs)
         vi._tmp = vi._tmp.select(
             additional_columns={
                 vi._COLUMN_RESERVE: vi._calc_reserve,
