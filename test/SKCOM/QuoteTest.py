@@ -1,5 +1,5 @@
 from Futures.Config import Config
-from SKCOM.QueryUtil import QueryUtil
+from SKCOM.QuoteUtil import QueryUtil
 import unittest
 import time
 
@@ -21,11 +21,14 @@ class SKCOMTest(unittest.TestCase):
     def test_(self):
         self.sk_util.connect()
         self.sk_util.pump_wait()
-        data1 = self.sk_util.get_k_line("TSEA")
-        print(len(data1), data1[-1])
+        # data1 = self.sk_util.get_k_line("TSEA")
+        # print(len(data1), data1[-1])
+        #
+        # data2 = self.sk_util.get_k_line("TX00")
+        # print(len(data2), data2[-1])
+        #
+        # data3 = self.sk_util.get_k_line("MTX00")
+        # print(len(data3), data3[-1])
 
-        data2 = self.sk_util.get_k_line("TX00")
-        print(len(data2), data2[-1])
-
-        data3 = self.sk_util.get_k_line("MTX00")
-        print(len(data3), data3[-1])
+        data4 = self.sk_util.get_quote("MTX00")
+        print(data4)

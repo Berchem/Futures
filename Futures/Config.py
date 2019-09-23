@@ -1,4 +1,4 @@
-from Util import deprecated
+from Futures.Util import deprecated
 import configparser
 
 
