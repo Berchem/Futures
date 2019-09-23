@@ -1,3 +1,5 @@
+import pythoncom
+
 from Futures.Config import Config
 from SKCOM.QuoteUtil import QueryUtil
 import unittest
@@ -31,4 +33,7 @@ class SKCOMTest(unittest.TestCase):
         # print(len(data3), data3[-1])
 
         data4 = self.sk_util.get_quote("MTX00")
+        for _ in range(10):
+            time.sleep(1)
+            pythoncom.PumpWaitingMessages()
         print(data4)
