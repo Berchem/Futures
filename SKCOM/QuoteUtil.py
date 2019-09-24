@@ -1,52 +1,12 @@
 import time
 
 import comtypes.gen.SKCOMLib as sk
-import math
 import pythoncom
 from comtypes.client import CreateObject
 from comtypes.client import GetEvents
 
 from SKCOM import QuoteEvents
 from SKCOM import ReplyEvents
-
-
-# skQ = CreateObject(sk.SKQuoteLib, interface=sk.ISKQuoteLib)
-
-
-# class QuoteEvents:
-#     nKind = None
-#     KlineData = []
-#     QuoteData = []
-#
-#     def OnConnection(self, nKind, nCode):
-#         if nCode == 0:
-#             self.nKind = nKind
-#             if nKind == 3001:
-#                 print("connecting, nkind= ", nKind)
-#
-#             elif nKind == 3003:
-#                 print("connect success, nkind= ", nKind)
-#
-#     def OnNotifyKLineData(self, bstrStockNo, bstrData):
-#         """
-#         :param bstrStockNo: stock no.
-#         :param bstrData: history data. Open, High, Low, Close, Volume
-#         :return: void
-#         """
-#         self.KlineData.append(bstrData.split(','))
-#
-#     def OnNotifyQuote(self, sMarketNo, sStockidx):
-#         pStock = sk.SKSTOCK()
-#         skQ.SKQuoteLib_GetStockByIndex(sMarketNo, sStockidx, pStock)
-#         quote_data = dict()
-#         quote_data["code"] = pStock.bstrStockNo
-#         quote_data["name"] = pStock.bstrStockName
-#         quote_data["open"] = pStock.nOpen / math.pow(10, pStock.sDecimal)
-#         quote_data["high"] = pStock.nHigh / math.pow(10, pStock.sDecimal)
-#         quote_data["low"] = pStock.nLow / math.pow(10, pStock.sDecimal)
-#         quote_data["match"] = pStock.nClose / math.pow(10, pStock.sDecimal)
-#         quote_data["volume"] = pStock.nTQty
-#         self.QuoteData += [quote_data]
 
 
 class QueryUtil:
@@ -81,16 +41,16 @@ class QueryUtil:
     def connect(self):
         try:
             return self.skQ.SKQuoteLib_EnterMonitor()
-            # return skQ.SKQuoteLib_EnterMonitor()
 
         except Exception:
             raise Exception("connect error.")
 
-    def pump_wait(self, retry_limit=10):
-        for _ in range(retry_limit):
-            time.sleep(1)
+    def pump_wait(self, wait_sec=1, retry_limit=10, is_break=True):
+        for i in range(retry_limit):
+            time.sleep(wait_sec)
             pythoncom.PumpWaitingMessages()
-            if self.event_quote.nKind == 3003:
+            if self.event_quote.nKind == 3003 and is_break:
+                print("retry %d times, wait %s sec" % (i + 1, (i + 1) * wait_sec))
                 break
 
     def disconnect(self):
@@ -103,13 +63,23 @@ class QueryUtil:
     def get_k_line(self, item_code, k_line_type=4, output_format=1, trade_session=1):
         self.event_quote.KlineData = []
         self.skQ.SKQuoteLib_RequestKLineAM(item_code, k_line_type, output_format, trade_session)
-        # skQ.SKQuoteLib_RequestKLineAM(item_code, k_line_type, output_format, trade_session)
         return self.event_quote.KlineData
 
-    def get_quote(self, item_code, page=0):
+    def get_quote(self, item_code, page=0, wait_sec=.1, retry_limit=10, is_break=False):
         self.skQ.SKQuoteLib_RequestStocks(page, item_code)
-        # skQ.SKQuoteLib_RequestStocks(page, item_code)
+        self.pump_wait(wait_sec=wait_sec, retry_limit=retry_limit, is_break=is_break)
         return self.event_quote.QuoteData
+
+    def get_history_ticks(self, item_code, page=0, wait_sec=.1, retry_limit=10, is_break=False):
+        self.skQ.SKQuoteLib_RequestTicks(page, item_code)
+        self.pump_wait(wait_sec=wait_sec, retry_limit=retry_limit, is_break=is_break)
+        return self.event_quote.HistoryTicks
+
+    def get_live_ticks(self, item_code, page=0, wait_sec=.1, retry_limit=10, is_break=False):
+        self.skQ.SKQuoteLib_RequestLiveTick(page, item_code)
+        self.pump_wait(wait_sec=wait_sec, retry_limit=retry_limit, is_break=is_break)
+        return self.event_quote.LiveTicks
+
 
 
 
