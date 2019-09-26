@@ -46,3 +46,13 @@ class Config:
         value = self.prop.get(section, option)
         if not value.isdigit():
             raise Exception("{} must be a number".format(option))
+
+    def write(self, filename):
+        with open(filename, "w") as f:
+            self.prop.write(f)
+
+    def rename_section(self, section_from, section_to):
+        for option, value in self.prop.items(section_from):
+            self.set_property_to_local(section_to, option, value)
+
+        self.prop.remove_section(section_from)
