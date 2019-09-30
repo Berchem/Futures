@@ -32,7 +32,7 @@ class ConfigTest(unittest.TestCase):
     def test_is_int(self):
         self.conf.set_property_to_local('aaa', 'bbb', '123')
         self.assertIsNone(self.conf.is_int('aaa', 'bbb'))
-        self.assertRaises(self.conf.is_int)
+        self.assertRaises(Exception, self.conf.is_int)
 
 
 if __name__ == '__main__':
