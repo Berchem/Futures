@@ -6,7 +6,7 @@ import unittest
 
 
 class SQLiteUtilTest(unittest.TestCase):
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    BASE_DIR = os.path.dirname(os.path.dirname(__file__))
     conf_path = os.path.join(BASE_DIR, "test_resources", "conf", "conf.properties")
     print(conf_path)
     conf = Config(conf_path)
@@ -74,18 +74,83 @@ class SQLiteUtilTest(unittest.TestCase):
         columns = self.sqlite_util.get_columns("not_exists")
         self.assertIsNone(columns)
         # query a table
-        self.test_write_sqlite_csv()
+        self.test_csv_to_table()
         columns = self.sqlite_util.get_columns(self.table_name)
-        self.assertListEqual(columns, self.columns)
+        self.assertListEqual(columns, ["index"] + self.columns)
 
     def test_tables(self):
-        self.test_write_sqlite_csv()
+        self.test_csv_to_table()
         self.assertIn(self.table_name, self.sqlite_util.tables())
 
     def test_scan(self):
-        self.test_write_sqlite_csv()
+        self.test_csv_to_table()
         data = self.sqlite_util.scan("select * from {}".format(self.table_name))
         self.assertEqual(len(data), 45310)
+
+    def test_insert(self):
+        table_name = "test_ohlc"
+        columns = [
+            "submit_time",
+            "status",
+            "program",
+            "process",
+            "item_code",
+            "page",
+            "k_line_type",
+            "output_format",
+            "trade_session",
+            # "process_table",
+            # "request_table",
+            # "multiple"
+        ]
+        values = [
+            "2019/09/30 16:26:00",
+            "NEW",
+            "Quote",
+            "getKLine",
+            "MTX00",
+        ]
+        self.sqlite_util.drop_table(table_name)
+        self.sqlite_util.create_table(table_name, columns)
+        self.sqlite_util.insert(table_name, columns[:-4], values)
+        self.sqlite_util.insert(table_name, columns[:-4], values)
+
+        rows = self.sqlite_util.scan("select * from {}".format(table_name))
+        self.assertEqual(len(rows), 2)
+
+    def test_update(self):
+        table_name = "test_ohlc"
+        self.test_insert()
+        self.sqlite_util.update(table_name, "status", "RUNNING", "where \"index\" = 1")
+        rows = self.sqlite_util.scan("select * from {}".format(table_name))
+        columns = self.sqlite_util.get_columns(table_name)
+        index_status = columns.index("status")
+        self.assertEqual(rows[0][index_status], "RUNNING")
+        self.assertEqual(rows[1][index_status], "NEW")
+
+    def test_bulk_insert(self):
+        table_name = "test_ohlc"
+        columns = [
+            "submit_time",
+            "status",
+            "program",
+            "process",
+            "item_code",
+        ]
+        values = [
+            "2019/09/30 16:26:00",
+            "NEW",
+            "Quote",
+            "getKLine",
+            "MTX00",
+        ]
+        self.sqlite_util.drop_table(table_name)
+        self.sqlite_util.create_table(table_name, columns)
+        batch_size = 10000
+        self.sqlite_util.bulk_insert(table_name, columns, [values for _ in range(batch_size)])
+        rows = self.sqlite_util.scan("select * from {}".format(table_name))
+        self.assertEqual(len(rows), batch_size)
+        self.assertEqual(list(rows[-1][1:]), values)
 
 
 if __name__ == '__main__':
