@@ -6,7 +6,10 @@ import unittest
 
 
 class SQLiteUtilTest(unittest.TestCase):
-    conf = Config('../test_resources/conf/conf.properties')
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    conf_path = os.path.join(BASE_DIR, "test_resources", "conf", "conf.properties")
+    print(conf_path)
+    conf = Config(conf_path)
     sqlite_util = SQLiteUtil(conf.prop.get("SQLITE", "DATABASE"))
     table_name = "test_table"
     columns = ['DATE', 'INFO_TIME', 'MATCH_TIME', 'PROD', 'ITEM', 'PRICE', 'QTY', 'AMOUNT', 'MATCH_BUY_CNT', 'MATCH_SELL_CNT']
@@ -34,13 +37,13 @@ class SQLiteUtilTest(unittest.TestCase):
         # assert
         self.assertTrue(self.table_name in table_list)
 
-    def test_write_sqlite_csv(self):
+    def test_csv_to_table(self):
         filename = "../test_resources/futures_data_sample/MATCH/Futures_20170815_I020.csv"
         # drop table
         self.sqlite_util.drop_table(self.table_name)
         # create table and write a file
         self.sqlite_util.create_table(self.table_name, self.columns)
-        self.sqlite_util.write_sqlite(filename, self.table_name)
+        self.sqlite_util.write_csv_to_table(filename, self.table_name)
         # fetch data
         cursor = self.sqlite_util.conn.execute("select * from %s" % self.table_name)
         result = cursor.fetchall()
@@ -49,13 +52,13 @@ class SQLiteUtilTest(unittest.TestCase):
         # assert
         self.assertTrue(len(data) == len(result))
 
-    def test_write_sqlite_folder(self):
+    def test_folder_to_table(self):
         path_name = "../test_resources/futures_data_sample/MATCH"
         # drop table
         self.sqlite_util.drop_table(self.table_name)
         # create table and write a file
         self.sqlite_util.create_table(self.table_name, self.columns)
-        self.sqlite_util.write_sqlite(path_name, self.table_name)
+        self.sqlite_util.write_csv_to_table(path_name, self.table_name)
         # fetch data
         cursor = self.sqlite_util.conn.execute("select * from %s" % self.table_name)
         result = cursor.fetchall()
