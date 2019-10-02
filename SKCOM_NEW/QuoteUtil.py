@@ -6,8 +6,8 @@ import time
 import math
 from comtypes.client import GetEvents
 
-from Futures.Util import deprecated
 from Futures.SQLiteUtil import SQLiteUtil
+from Futures.Util import deprecated
 from . import *
 
 
@@ -96,7 +96,7 @@ class QueryUtil(ReplyEvents, threading.Thread):
         """
         # item_code, datetime, open, high, low, close, volume
         # self.KLineData += [[self.kwargs["item_code"]] + [val.strip() for val in bstrData.split(',')]]
-        self.KLineData = [[bstrStockNo] + [val.strip() for val in bstrData.split(',')]]
+        self.KLineData += [[bstrStockNo] + [val.strip() for val in bstrData.split(',')]]
 
     def OnNotifyQuote(self, sMarketNo, sStockidx):
         """
@@ -195,8 +195,8 @@ class QueryUtil(ReplyEvents, threading.Thread):
 
     def customDaemon(self):
         while not self.gracefullyKill:
-            self.gracefullyKill = self.status == "KILL"
             time.sleep(2)
+            self.gracefullyKill = self.status == "KILL"
 
     def bulk_write(self, value_list):
         table_name = self.kwargs["process_table"]
@@ -242,7 +242,6 @@ class QueryUtil(ReplyEvents, threading.Thread):
 
     def run(self):
         self.update_request_job("RUNNING")
-        print(dt.datetime.now(), "thread {process}('{item_code}') start".format(**self.kwargs))
 
         event_handler_quote = GetEvents(skQ, self)
         event_handler_reply = GetEvents(skR, self)
@@ -264,5 +263,3 @@ class QueryUtil(ReplyEvents, threading.Thread):
 
         else:
             self.update_request_job("FINISH")
-
-        print(dt.datetime.now(), "thread {process}('{item_code}') end".format(**self.kwargs))
