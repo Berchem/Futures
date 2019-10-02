@@ -22,10 +22,12 @@ class DataUtil:
                 self.__table.insert(row)
         return self.__table
 
-    def get_data_from_sqlite(self, database, table_name):
+    def get_data_from_sqlite(self, database, table_name, condition=None):
         self.__sqlite_util = SQLiteUtil(database)
         columns = self.__sqlite_util.get_columns(table_name)
-        raw_data = self.__sqlite_util.scan("select * from %s" % table_name)
+        main_query = "select * from %s" % table_name
+        query = main_query + (""if condition is None else " {}".format(condition))
+        raw_data = self.__sqlite_util.scan(query)
         self.__table = Table(columns)
         for row in raw_data:
             self.__table.insert(row)

@@ -93,7 +93,7 @@ class SQLiteUtil(SQLite):
 
     def bulk_insert(self, table_name, columns, value_list):
         insert_statement = "insert into {} ({}) values ({})"
-        col = ",".join(map(lambda c: "'{}'".format(c), columns))
+        col = ",".join(map(lambda c: "`{}`".format(c), columns))
         val = ",".join("?" for _ in columns)
         insert_query = insert_statement.format(table_name, col, val)
         self.conn.executemany(insert_query, value_list)
