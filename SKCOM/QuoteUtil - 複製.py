@@ -6,8 +6,8 @@ import time
 import math
 from comtypes.client import GetEvents
 
-from Futures.SQLiteUtil import SQLiteUtil
 from Futures.Util import deprecated
+from Futures.SQLiteUtil import SQLiteUtil
 from . import *
 
 
@@ -72,21 +72,18 @@ class QueryUtil(ReplyEvents, threading.Thread):
         self.database = SQLiteUtil(kwargs["database"])
         self.multiple = kwargs["multiple"] if "multiple" in kwargs else False
 
-        self.batch_size = 20
+        self.batch_size = 1000
         self.KLineData = []
-        self.QuoteData = []
-        self.TicksData = []
-        self.LiveTicks = []
 
 # ============================  implement interface  ============================
     def OnConnection(self, nKind, nCode):
         if nCode == 0:
             if nKind == 3001:
-                print("connecting, nkind =", nKind)
+                print("connecting, nkind= ", nKind)
 
             elif nKind == 3003:
                 self.isConnected = True
-                print("connected,  nkind =", nKind)
+                print("connected, nkind= ", nKind)
 
     def OnNotifyKLineData(self, bstrStockNo, bstrData):
         """
@@ -95,8 +92,10 @@ class QueryUtil(ReplyEvents, threading.Thread):
         :return: void
         """
         # item_code, datetime, open, high, low, close, volume
-        # self.KLineData += [[self.kwargs["item_code"]] + [val.strip() for val in bstrData.split(',')]]
-        self.KLineData += [[bstrStockNo] + [val.strip() for val in bstrData.split(',')]]
+        self.KLineData += [[self.kwargs["item_code"]] + [val.strip() for val in bstrData.split(',')]]
+        # if len(self.KLineData) > self.batch_size:
+        #     self.bulk_write(self.KLineData)
+        #     self.KLineData = []
 
     def OnNotifyQuote(self, sMarketNo, sStockidx):
         """
@@ -106,38 +105,23 @@ class QueryUtil(ReplyEvents, threading.Thread):
         """
         pStock = sk.SKSTOCK()
         skQ.SKQuoteLib_GetStockByIndex(sMarketNo, sStockidx, pStock)
-        quote_data = [
-            pStock.bstrStockNo,  # item_code
-            dt.datetime.now().strftime("%Y/%m/%d %H:%M:%S.%f"),
-            pStock.nOpen / math.pow(10, pStock.sDecimal),  # open
-            pStock.nHigh / math.pow(10, pStock.sDecimal),  # high
-            pStock.nLow / math.pow(10, pStock.sDecimal),  # low
-            pStock.nClose / math.pow(10, pStock.sDecimal),  #close
-            pStock.nTQty  # volume
-        ]
-        self.QuoteData += [quote_data]
-        if len(self.QuoteData) >= self.batch_size:
-            self.bulk_write(self.QuoteData)
-            self.QuoteData = []
+        quote_data = dict()
+        quote_data["code"] = pStock.bstrStockNo
+        quote_data["name"] = pStock.bstrStockName
+        quote_data["open"] = pStock.nOpen / math.pow(10, pStock.sDecimal)
+        quote_data["high"] = pStock.nHigh / math.pow(10, pStock.sDecimal)
+        quote_data["low"] = pStock.nLow / math.pow(10, pStock.sDecimal)
+        quote_data["close"] = pStock.nClose / math.pow(10, pStock.sDecimal)
+        quote_data["volume"] = pStock.nTQty
+        print(quote_data)
+        # self.QuoteData += [quote_data]
 
     def OnNotifyHistoryTicks(self, sMarketNo, sStockIdx, nPtr, lDate,
                              lTimehms, lTimemillismicros, nBid, nAsk, nClose, nQty, nSimulate):
+        print(sStockIdx, nPtr, lDate, lTimehms, lTimemillismicros, nBid, nAsk, nClose, nQty, nSimulate)
         self.historyTicks = True
-        try:
-            nBid /= math.pow(10, 2)
-            nAsk /= math.pow(10, 2)
-            nClose /= math.pow(10, 2)
-            datetime = dt.datetime.strptime("{}{}{}".format(lDate, lTimehms, lTimemillismicros), "%Y%m%d%H%M%S%f")
-            datetime_str = datetime.strftime("%Y/%m/%d %H:%M:%S.%f")
-            self.TicksData += [[self.kwargs["item_code"], nPtr, datetime_str, nBid, nAsk, nClose, nQty, nSimulate]]
-
-        except ValueError:
-            print(self.kwargs["item_code"], nBid, nAsk, nClose, nQty, nSimulate,
-                  "ValueError:", lDate, lTimehms, lTimemillismicros)
-
-        # if len(self.TicksData) >= self.batch_size:
-        #     self.bulk_write(self.TicksData)
-        #     self.TicksData = []
+        # self.HistoryTicks += [[sStockIdx, nPtr, lDate,
+        #                        lTimehms, lTimemillismicros, nBid, nAsk, nClose, nQty, nSimulate]]
 
     def OnNotifyTicks(self, sMarketNo, sStockIdx, nPtr, lDate,
                       lTimehms, lTimemillismicros, nBid, nAsk, nClose, nQty, nSimulate):
@@ -147,23 +131,19 @@ class QueryUtil(ReplyEvents, threading.Thread):
             self.gracefullyKill = True
 
         else:
-            try:
-                nBid /= math.pow(10, 2)
-                nAsk /= math.pow(10, 2)
-                nClose /= math.pow(10, 2)
-                datetime = dt.datetime.strptime("{}{}{}".format(lDate, lTimehms, lTimemillismicros), "%Y%m%d%H%M%S%f")
-                datetime_str = datetime.strftime("%Y/%m/%d %H:%M:%S.%f")
-                self.LiveTicks += [[self.kwargs["item_code"], nPtr, datetime_str, nBid, nAsk, nClose, nQty, nSimulate]]
+            live_ticks_data = dict()
+            live_ticks_data["sStockIdx"] = sStockIdx
+            live_ticks_data["nPtr"] = nPtr
+            live_ticks_data["date"] = lDate
+            live_ticks_data["time"] = "%06d.%6d" % (lTimehms, lTimemillismicros)
+            live_ticks_data["nBid"] = nBid
+            live_ticks_data["nAsk"] = nAsk
+            live_ticks_data["nClose"] = nClose
+            live_ticks_data["nQty"] = nQty
+            live_ticks_data["nSimulate"] = nSimulate
+            print(live_ticks_data)
 
-            except ValueError:
-                print(self.kwargs["item_code"], nBid, nAsk, nClose, nQty, nSimulate,
-                      "ValueError:", lDate, lTimehms, lTimemillismicros)
-
-            if len(self.LiveTicks) >= self.batch_size:
-                self.bulk_write(self.LiveTicks)
-                self.LiveTicks = []
-
-# ==============================  call SKCOM api  ===============================
+# ==============================  call SKCOM_OLD api  ===============================
     @wait
     async def getKLine(self, item_code, k_line_type=4, output_format=1, trade_session=1):
         skQ.SKQuoteLib_RequestKLineAM(item_code, k_line_type, output_format, trade_session)
@@ -173,19 +153,16 @@ class QueryUtil(ReplyEvents, threading.Thread):
     async def getHistoryTicks(self, item_code, page=0):
         skQ.SKQuoteLib_RequestTicks(page, item_code)
         self.customDaemon()
-        self.bulk_write(self.TicksData)
 
     @wait
     async def getLiveTicks(self, item_code, page=0):
         skQ.SKQuoteLib_RequestLiveTick(page, item_code)
         self.customDaemon()
-        self.bulk_write(self.LiveTicks)
 
     @wait
     async def getQuote(self, item_code, page=0):
         skQ.SKQuoteLib_RequestStocks(page, item_code)
         self.customDaemon()
-        self.bulk_write(self.QuoteData)
 
 # ==================================  methods  ==================================
     async def _wait_for_connected(self, secs=0.2):
@@ -195,8 +172,8 @@ class QueryUtil(ReplyEvents, threading.Thread):
 
     def customDaemon(self):
         while not self.gracefullyKill:
-            time.sleep(2)
-            self.gracefullyKill = self.status == "KILL"
+            # disconnect()
+            time.sleep(1)
 
     def bulk_write(self, value_list):
         table_name = self.kwargs["process_table"]
@@ -204,62 +181,37 @@ class QueryUtil(ReplyEvents, threading.Thread):
         columns.remove("index")
         self.database.bulk_insert(table_name, columns, value_list)
 
-    def update_request_job(self, status):
-        self.database.update(table_name=self.kwargs["request_table"],
-                             column_name="status",
-                             value=status,
-                             condition="where `index` = {}".format(self.kwargs["index"]))
-
-    @property
-    def status(self):
-        select_statement = "select `status` from `{}` where `index` = {}"
-        query = select_statement.format(self.kwargs["request_table"], self.kwargs["index"])
-        res = self.database.scan(query)
-        status = res[0][0]
-        return status
-
     def process(self, **kwargs):
         if self.kwargs["process"] == "getKLine":
-            kwargs = {key: int(val) if val.isdigit() else val for key, val in kwargs.items()
-                      if key in ("item_code", "k_line_type", "output_format", "trade_session")
-                      and type(val) is str}
+            kwargs = {key: val for key, val in kwargs.items()
+                      if key in ("item_code", "k_line_type", "output_format", "trade_session")}
             return self.getKLine(**kwargs)
 
         elif self.kwargs["process"] == "getHistoryTicks":
-            kwargs = {key: int(val) if val.isdigit() else val for key, val in kwargs.items()
-                      if key in ("item_code", "page") and type(val) is str}
+            kwargs = {key: val for key, val in kwargs.items()
+                      if key in ("item_code", "page")}
             return self.getHistoryTicks(**kwargs)
 
         elif self.kwargs["process"] == "getLiveTicks":
-            kwargs = {key: int(val) if val.isdigit() else val for key, val in kwargs.items()
-                      if key in ("item_code", "page") and type(val) is str}
             return self.getLiveTicks(**kwargs)
 
         elif self.kwargs["process"] == "getQuote":
-            kwargs = {key: int(val) if val.isdigit() else val for key, val in kwargs.items()
-                      if key in ("item_code", "page") and type(val) is str}
+            kwargs = {key: val for key, val in kwargs.items()
+                      if key in ("item_code", "page")}
             return self.getQuote(**kwargs)
 
     def run(self):
-        self.update_request_job("RUNNING")
-
+        print(dt.datetime.now(), "thread {process}('{item_code}') start".format(**self.kwargs))
         event_handler_quote = GetEvents(skQ, self)
         event_handler_reply = GetEvents(skR, self)
 
         skC.SKCenterLib_SetLogPath(self.kwargs["log_path"])
 
         if not self.multiple:
-            login(self.kwargs["id_number"], self.kwargs["password"])
+            login(self.kwargs["account"], self.kwargs["password"])
             connect()
 
         loop = asyncio.new_event_loop()
         loop.run_until_complete(self.process(**self.kwargs))
 
-        if self.status == "KILL":
-            pass
-
-        elif self.status == "TIMEOUT":
-            pass
-
-        else:
-            self.update_request_job("FINISH")
+        print(dt.datetime.now(), "thread {process}('{item_code}') end".format(**self.kwargs))
