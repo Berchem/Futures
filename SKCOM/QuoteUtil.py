@@ -72,7 +72,7 @@ class QueryUtil(ReplyEvents, threading.Thread):
         self.database = SQLiteUtil(kwargs["database"])
         self.multiple = kwargs["multiple"] if "multiple" in kwargs else False
 
-        self.batch_size = 000
+        self.batch_size = 0
         self.KLineData = []
         self.QuoteData = []
         self.TicksData = []
@@ -100,6 +100,7 @@ class QueryUtil(ReplyEvents, threading.Thread):
 
     def OnNotifyQuote(self, sMarketNo, sStockidx):
         """
+        [todo] combine to OpenHighLowClose()
         :param sMarketNo: market number, e.g., 0
         :param sStockidx: item code, e.g., MTX00
         :return:
@@ -108,17 +109,34 @@ class QueryUtil(ReplyEvents, threading.Thread):
         skQ.SKQuoteLib_GetStockByIndex(sMarketNo, sStockidx, pStock)
         quote_data = [
             pStock.bstrStockNo,  # item_code
-            dt.datetime.now().strftime("%Y/%m/%d %H:%M:%S.%f"),
+            dt.datetime.now().strftime("%Y/%m/%d %H:%M:%S"),  # timestamp
             pStock.nOpen / math.pow(10, pStock.sDecimal),  # open
             pStock.nHigh / math.pow(10, pStock.sDecimal),  # high
             pStock.nLow / math.pow(10, pStock.sDecimal),  # low
             pStock.nClose / math.pow(10, pStock.sDecimal),  #close
             pStock.nTQty  # volume
         ]
-        self.QuoteData += [quote_data]
-        if len(self.QuoteData) >= self.batch_size:
+        if len(self.QuoteData) == 0:
+            self.QuoteData = [quote_data]
+
+        elif self.QuoteData[-1][1] == quote_data[1]:
+            if quote_data[3] > self.QuoteData[-1][3]:
+                self.QuoteData[-1][3] = quote_data[3]
+
+            if quote_data[4] < self.QuoteData[-1][4]:
+                self.QuoteData[-1][4] = quote_data[4]
+
+            self.QuoteData[-1][5] = quote_data[5]
+            self.QuoteData[-1][6] = quote_data[6]
+
+        else:
             self.bulk_write(self.QuoteData)
-            self.QuoteData = []
+            self.QuoteData = [quote_data]
+
+        # self.QuoteData += [quote_data]
+        # if len(self.QuoteData) >= self.batch_size:
+        #     self.bulk_write(self.QuoteData)
+        #     self.QuoteData = []
 
     def OnNotifyHistoryTicks(self, sMarketNo, sStockIdx, nPtr, lDate,
                              lTimehms, lTimemillismicros, nBid, nAsk, nClose, nQty, nSimulate):
@@ -243,14 +261,15 @@ class QueryUtil(ReplyEvents, threading.Thread):
 
     def run(self):
         self.update_request_job("RUNNING")
-
+        print(os.getppid(), "is running.", "{process}('{item_code}')".format(**self.kwargs))
         event_handler_quote = GetEvents(skQ, self)
         event_handler_reply = GetEvents(skR, self)
 
         skC.SKCenterLib_SetLogPath(self.kwargs["log_path"])
 
         if not self.multiple:
-            login_ret = login(self.kwargs["id_number"], md5(self.kwargs["password"]).decrypt.toString())
+            login_ret = login(md5(self.kwargs["id_number"]).decrypt.toString(),
+                              md5(self.kwargs["password"]).decrypt.toString())
             if login_ret == 0:
                 connect()
             else:
@@ -261,7 +280,7 @@ class QueryUtil(ReplyEvents, threading.Thread):
         loop.run_until_complete(self.process(**self.kwargs))
 
         if self.status == "KILL":
-            pass
+            self.update_request_job("FINISH")
 
         elif self.status == "TIMEOUT":
             pass
