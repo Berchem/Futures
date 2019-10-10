@@ -78,6 +78,9 @@ class QueryUtil(ReplyEvents, threading.Thread):
         self.TicksData = []
         self.LiveTicks = []
 
+        self.oldQuoteData = []
+        self.timeoutCounter= 0
+
 # ============================  implement interface  ============================
     def OnConnection(self, nKind, nCode):
         if nCode == 0:
@@ -86,6 +89,10 @@ class QueryUtil(ReplyEvents, threading.Thread):
 
             elif nKind == 3003:
                 self.isConnected = True
+                print("connected,  nkind =", nKind)
+
+            elif nKind == 3021:
+                self.isConnected = False
                 print("connected,  nkind =", nKind)
 
     def OnNotifyKLineData(self, bstrStockNo, bstrData):
@@ -215,7 +222,20 @@ class QueryUtil(ReplyEvents, threading.Thread):
     def customDaemon(self):
         while not self.gracefullyKill:
             time.sleep(2)
-            self.gracefullyKill = self.status == "KILL"
+            self.isTimeout(10)
+            self.gracefullyKill = (self.status == "KILL") or (self.status == "TIMEOUT")
+
+    def isTimeout(self, timeout_limit=10):
+        print(time.time())
+        print("old Data:", self.oldQuoteData)
+        print("new Data:", self.QuoteData)
+        if self.oldQuoteData == self.QuoteData:
+            self.timeoutCounter += 1
+        print("data not update:", self.timeoutCounter)
+        if self.timeoutCounter >= timeout_limit:
+            self.update_request_job("TIMEOUT")
+
+        self.oldQuoteData = self.QuoteData
 
     def bulk_write(self, value_list):
         table_name = self.kwargs["process_table"]
